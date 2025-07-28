@@ -3,5 +3,6 @@
         <file>icons/ArrowMoveDownRight.svg</file>
         <file>qml/MapView.qml</file>
         <file>resources/dump.js</file>
+        <file>resources/iphone.png</file>
     </qresource>
 </RCC>
