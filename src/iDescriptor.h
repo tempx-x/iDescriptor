@@ -12,8 +12,36 @@
 #define RECOVERY_CLIENT_CONNECTION_TRIES 3
 #define APPLE_VENDOR_ID 0x05ac
 
+struct BatteryInfo {
+    QString health;
+    uint64_t cycleCount;
+    // uint64_t designCapacity;
+    // uint64_t maxCapacity;
+    // uint64_t fullChargeCapacity;
+    std::string serialNumber;
+};
+
+//! IOS 12
+/* {
+"AmountDataAvailable": 6663077888,
+"AmountDataReserved": 209715200,
+"AmountRestoreAvailable": 11524079616,
+"CalculateDiskUsage": "OkilyDokily",
+"NANDInfo": <01000000 01000000 01000000 00000080 ... 00 00000000 000000>,
+"TotalDataAvailable": 6872793088,
+"TotalDataCapacity": 11306721280,
+"TotalDiskCapacity": 16000000000,
+"TotalSystemAvailable": 0,
+"TotalSystemCapacity": 4693204992
+}*/
+struct DiskInfo {
+    uint64_t totalDiskCapacity;
+    uint64_t totalDataCapacity;
+    uint64_t totalSystemCapacity;
+    uint64_t totalDataAvailable;
+};
+
 struct DeviceInfo {
-    std::string _0;
     enum class ActivationState {
         Activated,
         FactoryActivated,
@@ -79,6 +107,9 @@ struct DeviceInfo {
     bool systemAudioVolumeSaved;
     bool autoBoot;
     int backlightLevel;
+    bool productionDevice;
+    BatteryInfo batteryInfo;
+    DiskInfo diskInfo;
 };
 
 struct iDescriptorDevice {
@@ -166,3 +197,24 @@ enum class AddType { Regular, Pairing };
 #define APP_LABEL "iDescriptor"
 #define APP_VERSION "0.0.1"
 #define APP_COPYRIGHT "© 2023 Uncore. All rights reserved."
+
+class PlistNavigator
+{
+private:
+    plist_t current_node;
+
+public:
+    PlistNavigator(plist_t node) : current_node(node) {}
+
+    PlistNavigator operator[](const char *key)
+    {
+        if (!current_node || plist_get_node_type(current_node) != PLIST_DICT) {
+            return PlistNavigator(nullptr);
+        }
+        plist_t next = plist_dict_get_item(current_node, key);
+        return PlistNavigator(next);
+    }
+
+    operator plist_t() const { return current_node; }
+    bool valid() const { return current_node != nullptr; }
+};

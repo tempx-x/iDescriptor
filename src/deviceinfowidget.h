@@ -10,8 +10,10 @@ public:
     explicit DeviceInfoWidget(iDescriptorDevice *device,
                               QWidget *parent = nullptr);
 
+private slots:
+    void onBatteryMoreClicked();
+
 private:
-    QWidget *deviceInfoWidget;
     QPixmap getDeviceIcon(const std::string &productType);
     iDescriptorDevice *device;
 };
