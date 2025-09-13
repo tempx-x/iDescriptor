@@ -39,7 +39,13 @@ jobs:
             libusb-1.0-0-dev \
             libqrencode-dev \
             libirecovery-1.0-dev \
-            libcurl4-openssl-dev
+            libcurl4-openssl-dev \
+            libssl-dev \
+            libtool-bin \
+            autoconf \
+            automake \
+            checkinstall \
+            git \
 
       # required version is '>= 2.6.0'
       - name: Install libplist
@@ -58,11 +64,11 @@ jobs:
           ./autogen.sh
           sudo make install
 
-      - name: Install libtatsu
+      - name: Install libimobiledevice-glue
         if: runner.os == 'Linux'
         run: |
-          git clone https://github.com/libimobiledevice/libtatsu.git
-          cd libtatsu
+          git clone https://github.com/libimobiledevice/libimobiledevice-glue.git
+          cd libimobiledevice-glue
           ./autogen.sh
           sudo make install
 
