@@ -61,6 +61,8 @@ jobs:
             libgstreamer-plugins-base1.0-dev \
             libfuse2 \
             libunwind-dev \
+            libxcb-cursor0 \
+            libxkbcommon-x11-0 \
 
       # required version is '>= 2.6.0'
       - name: Install libplist
