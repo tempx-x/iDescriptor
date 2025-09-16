@@ -25,7 +25,9 @@
 #include <libimobiledevice/notification_proxy.h>
 #include <libtatsu/tss.h>
 #include <plist/plist.h>
+#ifndef _WIN32
 #include <printf.h>
+#endif
 
 QPair<bool, plist_t> _get_mounted_image(const char *udid)
 {

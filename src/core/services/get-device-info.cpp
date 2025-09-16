@@ -76,8 +76,8 @@ plist_t get_device_info(const char *udid, int use_network, int simple,
     }
 
     plist_t disk_info = nullptr;
-    u_int64_t total_space = 0;
-    u_int64_t free_space = 0;
+    uint64_t total_space = 0;
+    uint64_t free_space = 0;
     /* {
     "AmountDataAvailable": 6663077888,
     "AmountDataReserved": 209715200,

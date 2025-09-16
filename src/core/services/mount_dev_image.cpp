@@ -19,9 +19,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
+#define _GNU_SOURCE 1
 #include "../../iDescriptor.h"
 #include <stdlib.h>
-#define _GNU_SOURCE 1
 #define __USE_GNU 1
 #include <errno.h>
 #include <getopt.h>
@@ -45,7 +45,9 @@
 #include <libimobiledevice/notification_proxy.h>
 #include <libtatsu/tss.h>
 #include <plist/plist.h>
+#ifndef _WIN32
 #include <printf.h>
+#endif
 
 static int list_mode = 0;
 static int use_network = 0;

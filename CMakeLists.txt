@@ -10,6 +10,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Platform-specific paths for libraries built from source
 if(WIN32)
     set(CUSTOM_LIB_PATH "C:/msys64/mingw64/lib")
+    set(CUSTOM_BIN_PATH "C:/msys64/mingw64/bin")
     set(CUSTOM_INCLUDE_PATH "C:/msys64/mingw64/include")
     set(CUSTOM_PKGCONFIG_PATH "C:/msys64/mingw64/lib/pkgconfig")
     # Use Windows path separator for environment variables
@@ -227,4 +228,18 @@ install(TARGETS iDescriptor
 
 if(QT_VERSION_MAJOR EQUAL 6)
     qt_finalize_executable(iDescriptor)
+endif()
+
+# Copy runtime DLLs to build directory after building
+if(WIN32)
+    add_custom_command(TARGET iDescriptor POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E echo "Starting Windows deployment..."
+        COMMAND ${CMAKE_COMMAND}
+            -DEXECUTABLE_PATH=${CMAKE_CURRENT_BINARY_DIR}/iDescriptor.exe
+            -DMSYS2_BIN_PATH=${CUSTOM_BIN_PATH}
+            -DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}
+            -P ${CMAKE_CURRENT_LIST_DIR}/cmake/win-deploy.cmake
+        COMMENT "Deploying Windows application with all dependencies"
+        VERBATIM
+    )
 endif()

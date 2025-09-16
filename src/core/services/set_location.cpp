@@ -35,6 +35,9 @@
 #include <libkern/OSByteOrder.h>
 #include <machine/endian.h>
 #define htobe32(x) OSSwapHostToBigInt32(x)
+#elif defined(_WIN32)
+#include <winsock2.h>
+#define htobe32(x) htonl(x)
 #else
 #include <endian.h>
 #endif
