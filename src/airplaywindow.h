@@ -5,6 +5,7 @@
 #include <QMainWindow>
 #include <QThread>
 #include <QTimer>
+#include <cstdint>
 #include <functional>
 
 class AirPlayServerThread;
@@ -32,6 +33,18 @@ private:
     QLabel *m_statusLabel;
     AirPlayServerThread *m_serverThread;
     bool m_serverRunning;
+
+    // V4L2 members
+    int m_v4l2_fd;
+    int m_v4l2_width;
+    int m_v4l2_height;
+    bool m_v4l2_enabled;
+
+    // V4L2 methods
+    void initV4L2(int width, int height, const char *device);
+    void closeV4L2();
+    void writeFrameToV4L2(uint8_t *data, int width, int height);
+    void testV4L2Device();
 };
 
 class AirPlayServerThread : public QThread
