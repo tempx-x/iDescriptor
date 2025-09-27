@@ -34,6 +34,87 @@ std::string safeGetXML(const char *key, pugi::xml_node dict)
     return "";
 }
 
+// this is reused in the ui in deviceinfowidget
+void parseOldDeviceBattery(PlistNavigator &ioreg, DeviceInfo &d)
+{
+    d.batteryInfo.isCharging = ioreg["IsCharging"].getBool();
+
+    d.batteryInfo.fullyCharged = ioreg["FullyCharged"].getBool();
+
+    uint64_t appleRawCurrentCapacity =
+        ioreg["AppleRawCurrentCapacity"].getUInt();
+    uint64_t appleRawMaxCapacity = ioreg["AppleRawMaxCapacity"].getUInt();
+
+    qDebug() << "appleRawCurrentCapacity" << appleRawCurrentCapacity;
+    qDebug() << "appleRawMaxCapacity" << appleRawMaxCapacity;
+
+    uint64_t oldCurrrentBatteryLevel =
+        (appleRawCurrentCapacity && appleRawMaxCapacity)
+            ? (appleRawCurrentCapacity * 100 / appleRawMaxCapacity)
+            : 0;
+    qDebug() << "oldCurrrentBatteryLevel" << oldCurrrentBatteryLevel;
+
+    d.batteryInfo.currentBatteryLevel = oldCurrrentBatteryLevel;
+
+    // adaptor details
+    d.batteryInfo.usbConnectionType =
+        ioreg["AdapterDetails"]["Description"].getString() == "usb type-c"
+            ? BatteryInfo::ConnectionType::USB_TYPEC
+            : BatteryInfo::ConnectionType::USB;
+    d.batteryInfo.adapterVoltage = 0;
+
+    // watt
+    d.batteryInfo.watts = ioreg["AdapterDetails"]["Watts"].getUInt();
+}
+
+void parseOldDevice(PlistNavigator &ioreg, DeviceInfo &d)
+{
+    uint64_t cycleCount = ioreg["CycleCount"].getUInt();
+
+    // skipping on very old devices for now
+    std::string batterySerialNumber = "";
+    uint64_t designCapacity = ioreg["DesignCapacity"].getUInt();
+
+    uint64_t maxCapacity = ioreg["MaxCapacity"].getUInt();
+
+    qDebug() << "Design capacity: " << designCapacity;
+    qDebug() << "Max capacity: " << maxCapacity;
+
+    // Compat
+    int healthPercent =
+        (designCapacity != 0) ? (maxCapacity * 100) / designCapacity : 0;
+    healthPercent = std::min(healthPercent, 100);
+    d.batteryInfo.health = QString::number(healthPercent) + "%";
+    d.batteryInfo.cycleCount = cycleCount;
+    d.batteryInfo.serialNumber = !batterySerialNumber.empty()
+                                     ? batterySerialNumber
+                                     : "Error retrieving serial number";
+
+    parseOldDeviceBattery(ioreg, d);
+}
+
+// this is reused in the ui in deviceinfowidget
+void parseDeviceBattery(PlistNavigator &ioreg, DeviceInfo &d)
+{
+    d.batteryInfo.isCharging = ioreg["IsCharging"].getBool();
+
+    d.batteryInfo.fullyCharged = ioreg["FullyCharged"].getBool();
+
+    d.batteryInfo.currentBatteryLevel =
+        ioreg["BatteryData"]["StateOfCharge"].getUInt();
+
+    d.batteryInfo.usbConnectionType =
+        ioreg["AdapterDetails"]["Description"].getString() == "usb type-c"
+            ? BatteryInfo::ConnectionType::USB_TYPEC
+            : BatteryInfo::ConnectionType::USB;
+
+    // adaptor details
+    d.batteryInfo.adapterVoltage =
+        ioreg["AppleRawAdapterDetails"][0]["AdapterVoltage"].getUInt();
+
+    d.batteryInfo.watts = ioreg["AppleRawAdapterDetails"][0]["Watts"].getUInt();
+}
+
 // TODO: return tyype
 DeviceInfo fullDeviceInfo(const pugi::xml_document &doc,
                           afc_client_t &afcClient,
@@ -106,6 +187,10 @@ DeviceInfo fullDeviceInfo(const pugi::xml_document &doc,
     d.productionDevice = safeGetBool("ProductionSOC");
     if (_activationState == "Activated") {
         d.activationState = DeviceInfo::ActivationState::Activated;
+        // IOS 6
+    } else if (_activationState == "WildcardActivated") {
+        d.activationState =
+            DeviceInfo::ActivationState::Activated; // Treat as activated
     } else if (_activationState == "FactoryActivated") {
         d.activationState = DeviceInfo::ActivationState::FactoryActivated;
     } else if (_activationState == "Unactivated") {
@@ -124,66 +209,61 @@ DeviceInfo fullDeviceInfo(const pugi::xml_document &doc,
     /*BatteryInfo*/
     plist_t diagnostics = nullptr;
     get_battery_info(rawProductType, result.device, d.is_iPhone, diagnostics);
+    plist_print(diagnostics);
+
     if (!diagnostics) {
         qDebug() << "Failed to get diagnostics plist.";
         return d;
     }
+    try {
+        PlistNavigator ioreg = PlistNavigator(diagnostics)["IORegistry"];
 
-    plist_print(diagnostics);
-    uint64_t cycleCount =
-        PlistNavigator(diagnostics)["IORegistry"]["BatteryData"]["CycleCount"]
-            .getUInt();
+        // old devices do not have "BatteryData"
+        d.oldDevice = !ioreg["BatteryData"];
+        if (d.oldDevice) {
+            parseOldDevice(ioreg, d);
+            plist_free(diagnostics);
+            diagnostics = nullptr;
+            return d;
+        }
 
-    std::string batterySerialNumber =
-        PlistNavigator(
-            diagnostics)["IORegistry"]["BatteryData"]["BatterySerialNumber"]
-            .getString();
-    uint64_t designCapacity =
-        PlistNavigator(
-            diagnostics)["IORegistry"]["BatteryData"]["DesignCapacity"]
-            .getUInt();
+        bool newerThaniPhone8 =
+            is_product_type_newer(rawProductType, std::string("iPhone8,1"));
 
-    uint64_t appleRawCurrentCapacity =
-        PlistNavigator(diagnostics)["IORegistry"]["AppleRawCurrentCapacity"]
-            .getUInt();
+        uint64_t cycleCount = ioreg["BatteryData"]["CycleCount"].getUInt();
 
-    d.batteryInfo.health =
-        QString::number((appleRawCurrentCapacity * 100) / designCapacity) + "%";
-    d.batteryInfo.cycleCount = cycleCount;
-    d.batteryInfo.serialNumber = !batterySerialNumber.empty()
-                                     ? batterySerialNumber
-                                     : "Error retrieving serial number";
+        // Battery serial number
+        std::string batterySerialNumber =
+            ioreg["BatteryData"]["BatterySerialNumber"].getString();
 
-    d.batteryInfo.isCharging =
-        PlistNavigator(diagnostics)["IORegistry"]["IsCharging"].getBool();
+        uint64_t designCapacity =
+            ioreg["BatteryData"]["DesignCapacity"].getUInt();
 
-    d.batteryInfo.fullyCharged =
-        PlistNavigator(diagnostics)["IORegistry"]["FullyCharged"].getBool();
+        uint64_t maxCapacity =
+            d.is_iPhone ? newerThaniPhone8
+                              ? ioreg["AppleRawMaxCapacity"].getUInt()
+                              : ioreg["BatteryData"]["MaxCapacity"].getUInt()
+                        : ioreg["BatteryData"]["MaxCapacity"].getUInt();
 
-    d.batteryInfo.currentBatteryLevel =
-        PlistNavigator(diagnostics)["IORegistry"]["CurrentCapacity"].getUInt();
+        qDebug() << "Design capacity: " << designCapacity;
+        qDebug() << "Max capacity: " << maxCapacity;
 
-    d.batteryInfo.usbConnectionType =
-        PlistNavigator(
-            diagnostics)["IORegistry"]["AdapterDetails"]["Description"]
-                    .getString() == "usb type-c"
-            ? BatteryInfo::ConnectionType::USB_TYPEC
-            : BatteryInfo::ConnectionType::USB;
+        // seems to be to the most accurate way to get health
+        d.batteryInfo.health =
+            QString::number((maxCapacity * 100) / designCapacity) + "%";
+        d.batteryInfo.cycleCount = cycleCount;
+        d.batteryInfo.serialNumber = !batterySerialNumber.empty()
+                                         ? batterySerialNumber
+                                         : "Error retrieving serial number";
+        parseDeviceBattery(ioreg, d);
+        plist_free(diagnostics);
+        diagnostics = nullptr;
 
-    d.batteryInfo.adapterVoltage =
-        PlistNavigator(diagnostics)["IORegistry"]["AppleRawAdapterDetails"][0]
-                                   ["AdapterVoltage"]
-                                       .getUInt();
-
-    d.batteryInfo.watts =
-        PlistNavigator(
-            diagnostics)["IORegistry"]["AppleRawAdapterDetails"][0]["Watts"]
-            .getUInt();
-
-    plist_free(diagnostics);
-    diagnostics = nullptr;
-
-    return d;
+        return d;
+    } catch (const std::exception &e) {
+        qDebug() << "Error occurred: " << e.what();
+        return d;
+    }
 }
 
 // TODO: need to handle errors and free resources properly

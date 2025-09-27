@@ -131,6 +131,7 @@ struct DeviceInfo {
     BatteryInfo batteryInfo;
     DiskInfo diskInfo;
     bool is_iPhone;
+    bool oldDevice;
 };
 
 struct iDescriptorDevice {
@@ -260,7 +261,7 @@ private:
 public:
     PlistNavigator(plist_t node) : current_node(node) {}
 
-    // Existing dictionary key access
+    // dict key access
     PlistNavigator operator[](const char *key)
     {
         if (!current_node || plist_get_node_type(current_node) != PLIST_DICT) {
@@ -270,7 +271,7 @@ public:
         return PlistNavigator(next);
     }
 
-    // Add array index access
+    // array index access
     PlistNavigator operator[](int index)
     {
         if (!current_node || plist_get_node_type(current_node) != PLIST_ARRAY) {
@@ -287,7 +288,6 @@ public:
     operator plist_t() const { return current_node; }
     bool valid() const { return current_node != nullptr; }
 
-    // Your existing helper methods
     bool getBool() const
     {
         if (!current_node)
@@ -438,3 +438,6 @@ std::string safeGetXML(const char *key, pugi::xml_node dict);
 
 void get_battery_info(std::string productType, idevice_t idevice,
                       bool is_iphone, plist_t &diagnostics);
+
+void parseOldDeviceBattery(PlistNavigator &ioreg, DeviceInfo &d);
+void parseDeviceBattery(PlistNavigator &ioreg, DeviceInfo &d);

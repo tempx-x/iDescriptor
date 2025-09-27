@@ -322,35 +322,13 @@ void DeviceInfoWidget::updateBatteryInfo()
     }
     /*DATA*/
     DeviceInfo &d = m_device->deviceInfo;
-
-    d.batteryInfo.isCharging =
-        PlistNavigator(diagnostics)["IORegistry"]["IsCharging"].getBool();
-
-    d.batteryInfo.fullyCharged =
-        PlistNavigator(diagnostics)["IORegistry"]["FullyCharged"].getBool();
-
-    d.batteryInfo.currentBatteryLevel =
-        PlistNavigator(diagnostics)["IORegistry"]["CurrentCapacity"].getUInt();
-
-    d.batteryInfo.usbConnectionType =
-        PlistNavigator(
-            diagnostics)["IORegistry"]["AdapterDetails"]["Description"]
-                    .getString() == "usb type-c"
-            ? BatteryInfo::ConnectionType::USB_TYPEC
-            : BatteryInfo::ConnectionType::USB;
-
-    d.batteryInfo.adapterVoltage =
-        PlistNavigator(diagnostics)["IORegistry"]["AppleRawAdapterDetails"][0]
-                                   ["AdapterVoltage"]
-                                       .getUInt();
-
-    d.batteryInfo.watts =
-        PlistNavigator(
-            diagnostics)["IORegistry"]["AppleRawAdapterDetails"][0]["Watts"]
-            .getUInt();
-
+    qDebug() << "old device" << d.oldDevice;
+    PlistNavigator ioreg = PlistNavigator(diagnostics)["IORegistry"];
+    if (d.oldDevice)
+        parseOldDeviceBattery(ioreg, d);
+    else
+        parseDeviceBattery(ioreg, d);
     /*UI*/
-
     m_chargingStatusLabel->setText(d.batteryInfo.isCharging ? "Charging"
                                                             : "Not Charging");
     m_chargingWattsLabel->setText(QString::number(d.batteryInfo.watts) + "W");

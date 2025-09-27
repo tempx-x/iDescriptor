@@ -17,16 +17,8 @@ void get_battery_info(std::string productType, idevice_t idevice,
             return;
         }
 
-        bool newerThaniPhone8 =
-            is_product_type_newer(productType, std::string("iPhone8,1"));
-
-        const char *batteryQuery =
-            is_iphone
-                ? newerThaniPhone8 ? "AppleSmartBattery" : "AppleARMPMUCharger"
-                : "AppleARMPMUCharger";
-
         if (diagnostics_relay_query_ioregistry_entry(
-                diagnostics_client, nullptr, batteryQuery, &diagnostics) !=
+                diagnostics_client, nullptr, "IOPMPowerSource", &diagnostics) !=
                 DIAGNOSTICS_RELAY_E_SUCCESS &&
             !diagnostics) {
 
