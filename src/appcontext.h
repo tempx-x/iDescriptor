@@ -36,6 +36,7 @@ signals:
     void deviceAdded(iDescriptorDevice *device);
     void deviceRemoved(const std::string &udid);
     void devicePaired(iDescriptorDevice *device);
+    void devicePasswordProtected(const QString &udid);
     void recoveryDeviceAdded(RecoveryDeviceInfo *deviceInfo);
     void recoveryDeviceRemoved(const QString &udid);
     void devicePairPending(const QString &udid);

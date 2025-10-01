@@ -83,8 +83,11 @@ void AppContext::addDevice(QString udid, idevice_connection_type conn_type,
                 // because it's less likely that it will be an error typeof
                 // LOCKDOWN_E_PASSWORD_PROTECTED if the device is paired type
                 if (addType == AddType::Regular) { //  TODO:IMPLEMENT
-                    // emit devicePasswordProtected(udid);
-                };
+                    // FIXME: if a device never gets paired, it will stay in
+                    // this
+                    m_pendingDevices.append(udid);
+                    emit devicePasswordProtected(udid);
+                }
             } else if (initResult.error ==
                        LOCKDOWN_E_PAIRING_DIALOG_RESPONSE_PENDING) {
                 m_pendingDevices.append(udid);

@@ -19,7 +19,7 @@ public:
 
     void addDevice(iDescriptorDevice *device);
     // TODO:udid or uuid ?
-    void addPendingDevice(const QString &udid);
+    void addPendingDevice(const QString &udid, bool locked);
     void addPairedDevice(iDescriptorDevice *device);
 
     void removeDevice(const std::string &uuid);

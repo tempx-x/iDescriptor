@@ -1,6 +1,7 @@
 #include "devicemanagerwidget.h"
 #include "appcontext.h"
 #include "devicemenuwidget.h"
+#include "devicependingwidget.h"
 #include <QDebug>
 
 DeviceManagerWidget::DeviceManagerWidget(QWidget *parent)
@@ -23,7 +24,13 @@ DeviceManagerWidget::DeviceManagerWidget(QWidget *parent)
 
     connect(AppContext::sharedInstance(), &AppContext::devicePairPending, this,
             [this](const QString &udid) {
-                addPendingDevice(udid);
+                addPendingDevice(udid, false);
+                emit updateNoDevicesConnected();
+            });
+
+    connect(AppContext::sharedInstance(), &AppContext::devicePasswordProtected,
+            this, [this](const QString &udid) {
+                addPendingDevice(udid, true);
                 emit updateNoDevicesConnected();
             });
 
@@ -99,12 +106,24 @@ void DeviceManagerWidget::addDevice(iDescriptorDevice *device)
     // }
 }
 
-void DeviceManagerWidget::addPendingDevice(const QString &udid)
+void DeviceManagerWidget::addPendingDevice(const QString &udid, bool locked)
 {
     qDebug() << "Adding pending device:" << udid;
+    if (m_pendingDeviceWidgets.contains(udid.toStdString()) && !locked) {
+        qDebug() << "Pending device already exists, moving to next state:"
+                 << udid;
+        m_pendingDeviceWidgets[udid.toStdString()].first->next();
+        return;
+    } else if (m_pendingDeviceWidgets.contains(udid.toStdString()) && locked) {
+        // Already exists and still locked, do nothing
+        qDebug()
+            << "Pending device already exists and is locked, doing nothing:"
+            << udid;
+        return;
+    }
 
-    DevicePendingWidget *pendingWidget = new DevicePendingWidget(this);
-
+    qDebug() << "Created pending widget for:" << udid << "Locked:" << locked;
+    DevicePendingWidget *pendingWidget = new DevicePendingWidget(locked, this);
     m_stackedWidget->addWidget(pendingWidget);
     m_pendingDeviceWidgets[udid.toStdString()] =
         std::pair{pendingWidget, m_sidebar->addPendingToSidebar(udid)};
