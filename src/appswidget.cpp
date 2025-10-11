@@ -279,19 +279,12 @@ void AppsWidget::clearAppGrid()
     }
 }
 
-// void AppsWidget::showStatusMessage(const QString &message)
-// {
-//     showError(message);
-// }
-
 void AppsWidget::createAppCard(const QString &name, const QString &bundleId,
                                const QString &description,
                                const QString &iconPath, QGridLayout *gridLayout,
                                int row, int col)
 {
     QWidget *cardWidget = new QWidget();
-    // cardWidget->setFixedSize(200, 250);
-    cardWidget->setCursor(Qt::PointingHandCursor);
 
     QHBoxLayout *cardLayout = new QHBoxLayout(cardWidget);
     cardLayout->setContentsMargins(15, 15, 15, 15);
@@ -355,14 +348,14 @@ void AppsWidget::createAppCard(const QString &name, const QString &bundleId,
     QPushButton *installLabel = new QPushButton("Install");
     QPushButton *downloadIpaLabel = new QPushButton("Download IPA");
 
-    installLabel->setStyleSheet(
-        "font-size: 12px; color: #007AFF; font-weight: bold;");
+    installLabel->setStyleSheet("font-size: 12px; color: #007AFF; font-weight: "
+                                "bold; background-color: transparent;");
     installLabel->setCursor(Qt::PointingHandCursor);
     installLabel->setFixedHeight(30);
-    // installLabel->setAlignment(Qt::AlignCenter);
-    connect(
-        installLabel, &QPushButton::clicked, this,
-        [this, name, description]() { onAppCardClicked(name, description); });
+    connect(installLabel, &QPushButton::clicked, this,
+            [this, name, bundleId, description]() {
+                onAppCardClicked(name, bundleId, description);
+            });
 
     connect(downloadIpaLabel, &QPushButton::clicked, this,
             [this, name, bundleId]() { onDownloadIpaClicked(name, bundleId); });
@@ -416,6 +409,7 @@ void AppsWidget::onLoginClicked()
 }
 
 void AppsWidget::onAppCardClicked(const QString &appName,
+                                  const QString &bundleId,
                                   const QString &description)
 {
     if (!m_isLoggedIn) {
@@ -424,7 +418,7 @@ void AppsWidget::onAppCardClicked(const QString &appName,
         return;
     }
 
-    AppInstallDialog dialog(appName, description, this);
+    AppInstallDialog dialog(appName, description, bundleId, this);
     dialog.exec();
 }
 
@@ -477,6 +471,7 @@ void AppsWidget::onSearchFinished(bool success, const QString &results)
         return;
     }
 
+    qDebug() << "Search results:" << doc;
     QJsonObject rootObj = doc.object();
     if (!rootObj.value("success").toBool()) {
         QString errorMessage =

@@ -46,7 +46,8 @@ private slots:
 
 private:
     // Export single file using AFC
-    ExportResult exportSingleFile(afc_client_t afc, const QString &devicePath,
+    ExportResult exportSingleFile(iDescriptorDevice *device,
+                                  const QString &devicePath,
                                   const QString &outputPath);
 
     // Extract filename from device path

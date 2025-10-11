@@ -2,6 +2,7 @@
 #include "iDescriptor-ui.h"
 #include "iDescriptor.h"
 #include "mediapreviewdialog.h"
+#include "servicemanager.h"
 #include "settingsmanager.h"
 #include <QDebug>
 #include <QDesktopServices>
@@ -184,7 +185,7 @@ void AfcExplorerWidget::loadPath(const QString &path)
     updateAddressBar(path);
 
     AFCFileTree tree =
-        get_file_tree(m_currentAfcClient, m_device->device, path.toStdString());
+        ServiceManager::safeGetFileTree(m_device, path.toStdString());
     if (!tree.success) {
         m_fileList->addItem("Failed to load directory");
         return;
@@ -325,8 +326,8 @@ int AfcExplorerWidget::export_file_to_path(afc_client_t afc,
                                            const char *local_path)
 {
     uint64_t handle = 0;
-    if (afc_file_open(afc, device_path, AFC_FOPEN_RDONLY, &handle) !=
-        AFC_E_SUCCESS) {
+    if (ServiceManager::safeAfcFileOpen(m_device, device_path, AFC_FOPEN_RDONLY,
+                                        &handle) != AFC_E_SUCCESS) {
         qDebug() << "Failed to open file on device:" << device_path;
         return -1;
     }
@@ -339,8 +340,9 @@ int AfcExplorerWidget::export_file_to_path(afc_client_t afc,
 
     char buffer[4096];
     uint32_t bytes_read = 0;
-    while (afc_file_read(afc, handle, buffer, sizeof(buffer), &bytes_read) ==
-               AFC_E_SUCCESS &&
+    while (ServiceManager::safeAfcFileRead(m_device, handle, buffer,
+                                           sizeof(buffer),
+                                           &bytes_read) == AFC_E_SUCCESS &&
            bytes_read > 0) {
         fwrite(buffer, 1, bytes_read, out);
     }

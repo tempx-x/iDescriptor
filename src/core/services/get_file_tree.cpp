@@ -5,7 +5,7 @@
 #include <libimobiledevice/lockdown.h>
 #include <string.h>
 
-AFCFileTree get_file_tree(afc_client_t afcClient, idevice_t device,
+AFCFileTree get_file_tree(afc_client_t afcClient,
                           const std::string &path)
 {
 
@@ -19,7 +19,7 @@ AFCFileTree get_file_tree(afc_client_t afcClient, idevice_t device,
     }
 
     char **dirs = NULL;
-    if (safe_afc_read_directory(afcClient, device, path.c_str(), &dirs) !=
+    if (afc_read_directory(afcClient, path.c_str(), &dirs) !=
         AFC_E_SUCCESS) {
         result.success = false;
         return result;

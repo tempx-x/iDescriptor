@@ -31,6 +31,7 @@ private:
     void setupUI();
     void updateDeviceList();
     void updateToolboxStates();
+    void updateUI();
     ClickableWidget *createToolbox(iDescriptorTool tool,
                                    const QString &description,
                                    bool requiresDevice);

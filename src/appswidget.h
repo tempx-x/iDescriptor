@@ -27,7 +27,8 @@ public:
 
 private slots:
     void onLoginClicked();
-    void onAppCardClicked(const QString &appName, const QString &description);
+    void onAppCardClicked(const QString &appName, const QString &bundleId,
+                          const QString &description);
     void onDownloadIpaClicked(const QString &name, const QString &bundleId);
     void onSearchTextChanged();
     void performSearch();

@@ -1,6 +1,7 @@
 #include "photomodel.h"
 #include "iDescriptor.h"
 #include "mediastreamermanager.h"
+#include "servicemanager.h"
 #include <QDebug>
 #include <QEventLoop>
 #include <QIcon>
@@ -330,9 +331,9 @@ QPixmap PhotoModel::loadThumbnailFromDevice(iDescriptorDevice *device,
         }
     }
 
-    // Load from device using your AFC function
-    QByteArray imageData = read_afc_file_to_byte_array(
-        device->afcClient, filePath.toUtf8().constData());
+    // Load from device using ServiceManager
+    QByteArray imageData = ServiceManager::safeReadAfcFileToByteArray(
+        device, filePath.toUtf8().constData());
 
     if (imageData.isEmpty()) {
         qDebug() << "Could not read from device:" << filePath;
@@ -377,9 +378,9 @@ QPixmap PhotoModel::loadImage(iDescriptorDevice *device,
         }
     }
 
-    // Load from device using your AFC function
-    QByteArray imageData = read_afc_file_to_byte_array(
-        device->afcClient, filePath.toUtf8().constData());
+    // Load from device using ServiceManager
+    QByteArray imageData = ServiceManager::safeReadAfcFileToByteArray(
+        device, filePath.toUtf8().constData());
 
     if (imageData.isEmpty()) {
         qDebug() << "Could not read from device:" << filePath;
@@ -422,9 +423,9 @@ void PhotoModel::populatePhotoPaths()
     m_allPhotos.clear();
     m_photos.clear();
 
-    // Your existing logic to populate photo paths
-    char **files = nullptr;
-    qDebug() << "Populating photos from album path:" << m_albumPath;
+    // // Your existing logic to populate photo paths
+    // char **files = nullptr;
+    // qDebug() << "Populating photos from album path:" << m_albumPath;
 
     // First verify the album path exists
     QByteArray albumPathBytes = m_albumPath.toUtf8();
@@ -449,8 +450,10 @@ void PhotoModel::populatePhotoPaths()
     qDebug() << "Photo directory:" << m_albumPath;
     qDebug() << "Photo directory C string:" << photoDir;
 
-    afc_error_t readResult = safe_afc_read_directory(
-        m_device->afcClient, m_device->device, photoDir, &files);
+    // Use ServiceManager for thread-safe AFC operations
+    char **files = nullptr;
+    afc_error_t readResult =
+        ServiceManager::safeAfcReadDirectory(m_device, photoDir, &files);
     if (readResult != AFC_E_SUCCESS) {
         qDebug() << "Failed to read photo directory:" << photoDir
                  << "Error:" << readResult;

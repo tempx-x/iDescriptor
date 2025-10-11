@@ -2,11 +2,13 @@
 #include <QImage>
 #include <QtCore/QObject>
 #include <libimobiledevice/afc.h>
+#include <libimobiledevice/installation_proxy.h>
 #include <libimobiledevice/libimobiledevice.h>
 #include <libimobiledevice/lockdown.h>
 #include <libimobiledevice/mobile_image_mounter.h>
 #include <libimobiledevice/screenshotr.h>
 #include <libirecovery.h>
+#include <mutex>
 #include <pugixml.hpp>
 #include <string>
 #include <unordered_map>
@@ -143,10 +145,11 @@ struct iDescriptorDevice {
     afc_client_t afcClient;
     afc_client_t afc2Client;
     bool is_iPhone;
+    std::recursive_mutex *mutex;
 };
 
-struct IDescriptorInitDeviceResult {
-    bool success;
+struct iDescriptorInitDeviceResult {
+    bool success = false;
     lockdownd_error_t error;
     idevice_t device;
     DeviceInfo deviceInfo;
@@ -163,11 +166,11 @@ struct iDescriptorRecoveryDevice {
 };
 
 struct TakeScreenshotResult {
-    bool success;
+    bool success = false;
     QImage img;
 };
 
-struct IDescriptorInitDeviceResultRecovery {
+struct iDescriptorInitDeviceResultRecovery {
     irecv_client_t client = nullptr;
     irecv_device_info deviceInfo;
     irecv_error_t error;
@@ -266,18 +269,17 @@ struct AFCFileTree {
     std::string currentPath;
 };
 
-AFCFileTree get_file_tree(afc_client_t afcClient, idevice_t device,
+AFCFileTree get_file_tree(afc_client_t afcClient,
                           const std::string &path = "/");
 
 bool detect_jailbroken(afc_client_t afc);
 
-void get_device_info_xml(const char *udid, int use_network, int simple,
-                         pugi::xml_document &infoXml, lockdownd_client_t client,
-                         idevice_t device);
+void get_device_info_xml(const char *udid, lockdownd_client_t client,
+                         idevice_t device, pugi::xml_document &infoXml);
 
-IDescriptorInitDeviceResult init_idescriptor_device(const char *udid);
+iDescriptorInitDeviceResult init_idescriptor_device(const char *udid);
 
-IDescriptorInitDeviceResultRecovery
+iDescriptorInitDeviceResultRecovery
 init_idescriptor_recovery_device(uint64_t ecid);
 
 bool set_location(idevice_t device, char *lat, char *lon);
@@ -399,3 +401,6 @@ QByteArray read_afc_file_to_byte_array(afc_client_t afcClient,
                                        const char *path);
 
 bool isDarkMode();
+
+instproxy_error_t install_IPA(idevice_t device, afc_client_t afc,
+                              const char *filePath);

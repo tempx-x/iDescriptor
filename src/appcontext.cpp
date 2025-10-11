@@ -65,7 +65,7 @@ void AppContext::addDevice(QString udid, idevice_connection_type conn_type,
                            AddType addType)
 {
     try {
-        IDescriptorInitDeviceResult initResult =
+        iDescriptorInitDeviceResult initResult =
             init_idescriptor_device(udid.toStdString().c_str());
 
         qDebug() << "init_idescriptor_device success ?: " << initResult.success;
@@ -78,6 +78,7 @@ void AppContext::addDevice(QString udid, idevice_connection_type conn_type,
                 if (addType == AddType::Regular) {
                     m_pendingDevices.append(udid);
                     emit devicePasswordProtected(udid);
+                    emit deviceChange();
                     QTimer::singleShot(30000, this, [this, udid]() {
                         // After 30 seconds, if the device is still pending,
                         // consider the pairing expired
@@ -88,6 +89,7 @@ void AppContext::addDevice(QString udid, idevice_connection_type conn_type,
                                 << "Pairing expired for device UDID: " << udid;
                             m_pendingDevices.removeAll(udid);
                             emit devicePairingExpired(udid);
+                            emit deviceChange();
                         }
                     });
                 }
@@ -95,6 +97,7 @@ void AppContext::addDevice(QString udid, idevice_connection_type conn_type,
                        LOCKDOWN_E_PAIRING_DIALOG_RESPONSE_PENDING) {
                 m_pendingDevices.append(udid);
                 emit devicePairPending(udid);
+                emit deviceChange();
                 QTimer::singleShot(30000, this, [this, udid]() {
                     // After 30 seconds, if the device is still pending,
                     // consider the pairing expired
@@ -103,6 +106,7 @@ void AppContext::addDevice(QString udid, idevice_connection_type conn_type,
                         qDebug() << "Pairing expired for device UDID: " << udid;
                         m_pendingDevices.removeAll(udid);
                         emit devicePairingExpired(udid);
+                        emit deviceChange();
                     }
                 });
             } else {
@@ -120,11 +124,16 @@ void AppContext::addDevice(QString udid, idevice_connection_type conn_type,
             .deviceInfo = initResult.deviceInfo,
             .afcClient = initResult.afcClient,
             .afc2Client = initResult.afc2Client,
+            .mutex = new std::recursive_mutex(),
         };
         m_devices[device->udid] = device;
-        if (addType == AddType::Regular)
-            return emit deviceAdded(device);
+        if (addType == AddType::Regular) {
+            emit deviceAdded(device);
+            emit deviceChange();
+            return;
+        }
         emit devicePaired(device);
+        emit deviceChange();
         m_pendingDevices.removeAll(udid);
 
     } catch (const std::exception &e) {
@@ -137,16 +146,22 @@ int AppContext::getConnectedDeviceCount() const
     return m_devices.size() + m_recoveryDevices.size();
 }
 
+/*
+    FIXME:
+    on macOS, sometimes you get wireless disconnects even though we are not
+    listening for wireless devices it does not have any to do with us, but it
+    still happens so be aware of that
+*/
 void AppContext::removeDevice(QString _udid)
-
 {
     const std::string uuid = _udid.toStdString();
     qDebug() << "AppContext::removeDevice device with UUID:"
              << QString::fromStdString(uuid);
 
     if (m_pendingDevices.contains(_udid)) {
-        m_pendingDevices.removeAll(_udid);
         emit devicePairingExpired(_udid);
+        emit deviceChange();
+        m_pendingDevices.removeAll(_udid);
         return;
     } else {
         qDebug() << "Device with UUID " + _udid +
@@ -163,9 +178,14 @@ void AppContext::removeDevice(QString _udid)
     m_devices.remove(uuid);
 
     emit deviceRemoved(uuid);
+    emit deviceChange();
+
+    std::lock_guard<std::recursive_mutex> lock(*device->mutex);
+
     if (device->afcClient)
         afc_client_free(device->afcClient);
     idevice_free(device->device);
+    delete device->mutex;
     delete device;
 }
 
@@ -181,6 +201,7 @@ void AppContext::removeRecoveryDevice(uint64_t ecid)
 
     m_recoveryDevices.remove(ecid);
     emit recoveryDeviceRemoved(ecid);
+    emit deviceChange();
     iDescriptorRecoveryDevice *deviceInfo = m_recoveryDevices[ecid];
 
     delete deviceInfo;
@@ -210,7 +231,7 @@ bool AppContext::noDevicesConnected() const
 
 void AppContext::addRecoveryDevice(uint64_t ecid)
 {
-    IDescriptorInitDeviceResultRecovery res =
+    iDescriptorInitDeviceResultRecovery res =
         init_idescriptor_recovery_device(ecid);
 
     if (!res.success) {
@@ -229,6 +250,7 @@ void AppContext::addRecoveryDevice(uint64_t ecid)
 
     m_recoveryDevices[res.deviceInfo.ecid] = recoveryDevice;
     emit recoveryDeviceAdded(recoveryDevice);
+    emit deviceChange();
 }
 
 AppContext::~AppContext()

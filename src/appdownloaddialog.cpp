@@ -12,7 +12,7 @@ AppDownloadDialog::AppDownloadDialog(const QString &appName,
                                      const QString &bundleId,
                                      const QString &description,
                                      QWidget *parent)
-    : AppDownloadBaseDialog(appName, parent),
+    : AppDownloadBaseDialog(appName, bundleId, parent),
       m_outputDir(
           QStandardPaths::writableLocation(QStandardPaths::DownloadLocation)),
       m_bundleId(bundleId)
@@ -32,7 +32,7 @@ AppDownloadDialog::AppDownloadDialog(const QString &appName,
     // Directory selection UI
     QHBoxLayout *dirLayout = new QHBoxLayout();
     QLabel *dirTextLabel = new QLabel("Save to:");
-    dirTextLabel->setStyleSheet("font-size: 14px; color: #333;");
+    dirTextLabel->setStyleSheet("font-size: 14px;");
     dirLayout->addWidget(dirTextLabel);
 
     m_dirLabel = new ClickableLabel(this);
@@ -60,9 +60,7 @@ AppDownloadDialog::AppDownloadDialog(const QString &appName,
 
     m_actionButton = new QPushButton("Download IPA");
     m_actionButton->setFixedHeight(40);
-    m_actionButton->setStyleSheet(
-        "background-color: #34C759; color: white; border: none; border-radius: "
-        "6px; font-size: 16px; font-weight: bold;");
+    m_actionButton->setDefault(true);
     connect(m_actionButton, &QPushButton::clicked, this,
             &AppDownloadDialog::onDownloadClicked);
     layout->addWidget(m_actionButton);

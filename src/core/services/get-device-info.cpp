@@ -63,8 +63,8 @@ static const char *domains[] = {
     "com.apple.mobile.iTunes", "com.apple.fmip", "com.apple.Accessibility",
     NULL};
 
-plist_t get_device_info(const char *udid, int use_network, int simple,
-                        lockdownd_client_t client, idevice_t device)
+plist_t get_device_info(const char *udid, lockdownd_client_t client,
+                        idevice_t device)
 {
     lockdownd_error_t ldret = LOCKDOWN_E_UNKNOWN_ERROR;
     idevice_error_t ret = IDEVICE_E_UNKNOWN_ERROR;
@@ -78,21 +78,6 @@ plist_t get_device_info(const char *udid, int use_network, int simple,
     plist_t disk_info = nullptr;
     uint64_t total_space = 0;
     uint64_t free_space = 0;
-    /* {
-    "AmountDataAvailable": 6663077888,
-    "AmountDataReserved": 209715200,
-    "AmountRestoreAvailable": 11524079616,
-    "CalculateDiskUsage": "OkilyDokily",
-    "NANDInfo": <01000000 01000000 01000000 00000080 ... 00 00000000 000000>,
-    "TotalDataAvailable": 6872793088,
-    "TotalDataCapacity": 11306721280,
-    "TotalDiskCapacity": 16000000000,
-    "TotalSystemAvailable": 0,
-    "TotalSystemCapacity": 4693204992
-    }*/
-    /* trying to set DiskInfo as key results in
-    xplist.c:365: node_to_xml: Assertion `(node->children->count % 2) == 0'
-    failed. so lets do merge it*/
     if (lockdownd_get_value(client, "com.apple.disk_usage", nullptr,
                             &disk_info) == LOCKDOWN_E_SUCCESS) {
         // merge dict
@@ -103,14 +88,12 @@ plist_t get_device_info(const char *udid, int use_network, int simple,
     return node;
 }
 
-void get_device_info_xml(const char *udid, int use_network, int simple,
-                         pugi::xml_document &infoXml, lockdownd_client_t client,
-                         idevice_t device)
+void get_device_info_xml(const char *udid, lockdownd_client_t client,
+                         idevice_t device, pugi::xml_document &infoXml)
 {
-    plist_t node = get_device_info(udid, use_network, simple, client, device);
+    plist_t node = get_device_info(udid, client, device);
     if (!node)
         return;
-
     char *xml_string = nullptr;
     uint32_t xml_length = 0;
     plist_to_xml(node, &xml_string, &xml_length);

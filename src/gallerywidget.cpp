@@ -19,6 +19,7 @@
 #include <QStandardPaths>
 #include <QVBoxLayout>
 #include <QtConcurrent/QtConcurrent>
+#include "servicemanager.h"
 
 void GalleryWidget::load()
 {
@@ -399,7 +400,7 @@ void GalleryWidget::loadAlbumList()
     // Get DCIM directory contents
     qDebug() << "Loading album list from /DCIM";
     AFCFileTree dcimTree =
-        get_file_tree(m_device->afcClient, m_device->device, "/DCIM");
+        ServiceManager::safeGetFileTree(m_device, "/DCIM");
 
     if (!dcimTree.success) {
         qDebug() << "Failed to read DCIM directory";

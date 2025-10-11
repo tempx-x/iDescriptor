@@ -72,11 +72,8 @@ ToolboxWidget::ToolboxWidget(QWidget *parent) : QWidget{parent}
     updateDeviceList();
     updateToolboxStates();
 
-    // Connect to AppContext signals
-    connect(AppContext::sharedInstance(), &AppContext::deviceAdded, this,
-            &ToolboxWidget::onDeviceAdded);
-    connect(AppContext::sharedInstance(), &AppContext::deviceRemoved, this,
-            &ToolboxWidget::onDeviceRemoved);
+    connect(AppContext::sharedInstance(), &AppContext::deviceChange, this,
+            &ToolboxWidget::updateUI);
 }
 
 void ToolboxWidget::setupUI()
@@ -304,13 +301,7 @@ void ToolboxWidget::updateToolboxStates()
     }
 }
 
-void ToolboxWidget::onDeviceAdded()
-{
-    updateDeviceList();
-    updateToolboxStates();
-}
-
-void ToolboxWidget::onDeviceRemoved()
+void ToolboxWidget::updateUI()
 {
     updateDeviceList();
     updateToolboxStates();
@@ -331,7 +322,7 @@ void ToolboxWidget::onDeviceSelectionChanged()
             return;
         }
     }
-    m_uuid.clear(); // No valid device selected
+    m_uuid.clear();
 }
 
 void ToolboxWidget::onToolboxClicked(iDescriptorTool tool)

@@ -37,6 +37,14 @@ signals:
     void devicePairingExpired(const QString &udid);
     void systemSleepStarting();
     void systemWakeup();
+    /*
+        Generic change event for any device state change we
+        need this because many UI elements need to update by
+        listening for this only you can watch for any event
+        and using the public members of this class you can
+        do anything you want
+    */
+    void deviceChange();
 public slots:
     void removeDevice(QString udid);
     void addDevice(QString udid, idevice_connection_type connType,

@@ -605,6 +605,10 @@ void InstalledAppsWidget::filterApps(const QString &searchText)
     }
 }
 
+/*
+    FIXME: maybe we better have this in servicemanager,
+    for now it's ok as it's only used here
+*/
 void InstalledAppsWidget::loadAppContainer(const QString &bundleId)
 {
     if (!m_device || !m_device->device) {

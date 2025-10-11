@@ -31,6 +31,7 @@ DeviceInfoWidget::DeviceInfoWidget(iDescriptorDevice *device, QWidget *parent)
     QHBoxLayout *mainLayout = new QHBoxLayout(this);
     mainLayout->setContentsMargins(0, 0, 10, 0);
     mainLayout->setSpacing(1);
+    mainLayout->addStretch();
 
     // Left side container for image and actions
     QWidget *leftContainer = new QWidget();
@@ -78,15 +79,17 @@ DeviceInfoWidget::DeviceInfoWidget(iDescriptorDevice *device, QWidget *parent)
     actionsLayout->addWidget(restartBtn);
     actionsLayout->addWidget(recoveryBtn);
 
+    leftLayout->addStretch();
     leftLayout->addWidget(m_deviceImageLabel);
     leftLayout->addWidget(actionsWidget, 0, Qt::AlignCenter);
-    leftLayout->addStretch(); // stretch to push everything to the top
+    leftLayout->addStretch();
 
-    mainLayout->addWidget(leftContainer); // Stretch factor 1
+    mainLayout->addWidget(leftContainer);
 
     // Right side: Info Table
     QWidget *infoContainer = new QWidget();
-    infoContainer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
+    // 2. Change the horizontal size policy from Expanding to Preferred
+    infoContainer->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
 
     QVBoxLayout *infoLayout = new QVBoxLayout(infoContainer);
 
@@ -111,6 +114,7 @@ DeviceInfoWidget::DeviceInfoWidget(iDescriptorDevice *device, QWidget *parent)
     // background-color: rgba(0, 255, 30, 0.5);
     diskCapacityLabel->setStyleSheet(QString("background-color: %1;"
                                              "padding: 2px 4px;"
+                                             "color : white;"
                                              "border-radius: 13px;")
                                          .arg(COLOR_ACCENT_BLUE.name()));
 
@@ -285,20 +289,25 @@ DeviceInfoWidget::DeviceInfoWidget(iDescriptorDevice *device, QWidget *parent)
     // Footer
     QLabel *footerLabel =
         new QLabel("UDID: " + QString::fromStdString(device->udid));
+    footerLabel->setToolTip("Unique Device Identifier");
     footerLabel->setStyleSheet(
-        "font-size: 10px; color: #666; padding-top: 5px; "
-        "border-top: 1px solid #eee;");
+        "font-size: 10px; color: #666; margin-top: 5px; ");
     footerLabel->setWordWrap(true);
     infoLayout->addWidget(footerLabel);
 
-    // Create a vertical layout for the right side to stack info and disk usage
     QVBoxLayout *rightSideLayout = new QVBoxLayout();
     rightSideLayout->setSpacing(10);
+    rightSideLayout->addStretch();
+
     rightSideLayout->addWidget(infoContainer);
     rightSideLayout->addWidget(new DiskUsageWidget(device, this));
+
+    rightSideLayout->addStretch();
     // TODO: layout shift cause ?
     // rightSideLayout->setAlignment(Qt::AlignCenter);
-    mainLayout->addLayout(rightSideLayout, 2); // Stretch factor 2
+
+    mainLayout->addLayout(rightSideLayout);
+
     m_updateTimer = new QTimer(this);
     connect(m_updateTimer, &QTimer::timeout, this,
             &DeviceInfoWidget::updateBatteryInfo);

@@ -1,4 +1,5 @@
 #include "photoexportmanager.h"
+#include "servicemanager.h"
 #include <QDateTime>
 #include <QDebug>
 #include <QDir>
@@ -104,7 +105,7 @@ void PhotoExportManager::performExport()
         outputPath = generateUniqueOutputPath(outputPath);
 
         ExportResult result =
-            exportSingleFile(m_device->afcClient, devicePath, outputPath);
+            exportSingleFile(m_device, devicePath, outputPath);
 
         if (result.success) {
             successful++;
@@ -126,24 +127,26 @@ void PhotoExportManager::performExport()
     emit exportFinished(successful, failed);
 }
 
-PhotoExportManager::ExportResult PhotoExportManager::exportSingleFile(
-    afc_client_t afc, const QString &devicePath, const QString &outputPath)
+PhotoExportManager::ExportResult
+PhotoExportManager::exportSingleFile(iDescriptorDevice *device,
+                                     const QString &devicePath,
+                                     const QString &outputPath)
 {
     ExportResult result;
     result.filePath = devicePath;
     result.outputPath = outputPath;
     result.success = false;
 
-    // Open file on device
+    // Use ServiceManager for thread-safe AFC operations
     uint64_t handle = 0;
-    afc_error_t afc_err = afc_file_open(afc, devicePath.toUtf8().constData(),
-                                        AFC_FOPEN_RDONLY, &handle);
+    afc_error_t openResult = ServiceManager::safeAfcFileOpen(
+        device, devicePath.toUtf8().constData(), AFC_FOPEN_RDONLY, &handle);
 
-    if (afc_err != AFC_E_SUCCESS) {
+    if (openResult != AFC_E_SUCCESS) {
         result.errorMessage =
             QString("Failed to open file on device: %1 (AFC error: %2)")
                 .arg(devicePath)
-                .arg(static_cast<int>(afc_err));
+                .arg(static_cast<int>(openResult));
         return result;
     }
 
@@ -153,28 +156,33 @@ PhotoExportManager::ExportResult PhotoExportManager::exportSingleFile(
         result.errorMessage = QString("Failed to create local file: %1 (%2)")
                                   .arg(outputPath)
                                   .arg(outputFile.errorString());
-        afc_file_close(afc, handle);
+        ServiceManager::safeAfcFileClose(device, handle);
         return result;
     }
 
-    // Copy data from device to local file
+    // Copy data from device to local file using ServiceManager
     char buffer[4096];
     uint32_t bytesRead = 0;
     qint64 totalBytes = 0;
 
-    while (afc_file_read(afc, handle, buffer, sizeof(buffer), &bytesRead) ==
-               AFC_E_SUCCESS &&
-           bytesRead > 0) {
+    while (true) {
         // Check for cancellation during file copy
         {
             QMutexLocker locker(&m_mutex);
             if (m_cancelRequested) {
                 outputFile.close();
                 outputFile.remove(); // Clean up partial file
-                afc_file_close(afc, handle);
+                ServiceManager::safeAfcFileClose(device, handle);
                 result.errorMessage = "Export cancelled";
                 return result;
             }
+        }
+
+        afc_error_t readResult = ServiceManager::safeAfcFileRead(
+            device, handle, buffer, sizeof(buffer), &bytesRead);
+
+        if (readResult != AFC_E_SUCCESS || bytesRead == 0) {
+            break; // End of file or error
         }
 
         qint64 bytesWritten = outputFile.write(buffer, bytesRead);
@@ -185,7 +193,7 @@ PhotoExportManager::ExportResult PhotoExportManager::exportSingleFile(
                     .arg(bytesRead);
             outputFile.close();
             outputFile.remove(); // Clean up partial file
-            afc_file_close(afc, handle);
+            ServiceManager::safeAfcFileClose(device, handle);
             return result;
         }
 
@@ -194,7 +202,7 @@ PhotoExportManager::ExportResult PhotoExportManager::exportSingleFile(
 
     // Clean up
     outputFile.close();
-    afc_file_close(afc, handle);
+    ServiceManager::safeAfcFileClose(device, handle);
 
     if (totalBytes == 0) {
         result.errorMessage = "No data read from device file";

@@ -1,5 +1,6 @@
 #include "../../devicedatabase.h"
 #include "../../iDescriptor.h"
+#include "../../servicemanager.h"
 #include "libirecovery.h"
 #include <QDebug>
 #include <libimobiledevice/diagnostics_relay.h>
@@ -120,7 +121,7 @@ void parseDeviceBattery(PlistNavigator &ioreg, DeviceInfo &d)
 // TODO: return tyype
 DeviceInfo fullDeviceInfo(const pugi::xml_document &doc,
                           afc_client_t &afcClient,
-                          IDescriptorInitDeviceResult &result)
+                          iDescriptorInitDeviceResult &result)
 {
     pugi::xml_node dict = doc.child("plist").child("dict");
     auto safeGet = [&](const char *key) -> std::string {
@@ -206,7 +207,7 @@ DeviceInfo fullDeviceInfo(const pugi::xml_document &doc,
     const DeviceDatabaseInfo *info =
         DeviceDatabase::findByIdentifier(rawProductType);
     d.productType =
-        info ? info->displayName ? info->marketingName : "Unknown Device"
+        info ? info->displayName ? info->displayName : info->marketingName
              : "Unknown Device";
     d.rawProductType = rawProductType;
     d.jailbroken = detect_jailbroken(afcClient);
@@ -271,152 +272,134 @@ DeviceInfo fullDeviceInfo(const pugi::xml_document &doc,
     }
 }
 
-// TODO: IDescriptorInitDeviceResult
-IDescriptorInitDeviceResult init_idescriptor_device(const char *udid)
+iDescriptorInitDeviceResult init_idescriptor_device(const char *udid)
 {
-    // TODO:on a broken usb cable this can hang for a long time
-    // causing the UI to freeze
     qDebug() << "Initializing iDescriptor device with UDID: "
              << QString::fromUtf8(udid);
-    IDescriptorInitDeviceResult result = {};
+    iDescriptorInitDeviceResult result = {};
 
-    lockdownd_client_t client;
-    // TODO: LOCKDOWN_E_PAIRING_DIALOG_RESPONSE_PENDING
-    // LOCKDOWN_E_PAIRING_DIALOG_RESPONSE_PENDING         = -19,
-    lockdownd_error_t ldret = LOCKDOWN_E_UNKNOWN_ERROR;
+    // 1. Initialize all resource handles to nullptr
+    idevice_t device = nullptr;
+    lockdownd_client_t client = nullptr;
     lockdownd_service_descriptor_t lockdownService = nullptr;
     afc_client_t afcClient = nullptr;
     afc_client_t afc2Client = nullptr;
-    try {
-        idevice_error_t ret = idevice_new_with_options(&result.device, udid,
-                                                       IDEVICE_LOOKUP_USBMUX);
+    pugi::xml_document infoXml;
 
-        if (ret != IDEVICE_E_SUCCESS) {
-            qDebug() << "Failed to connect to device: " << ret;
-            return result;
-        }
-        if (LOCKDOWN_E_SUCCESS != (ldret = lockdownd_client_new_with_handshake(
-                                       result.device, &client, APP_LABEL))) {
-            result.error = ldret;
-            qDebug() << "Failed to create lockdown client: " << ldret;
-            idevice_free(result.device);
-            return result;
-        }
+    idevice_error_t ret =
+        idevice_new_with_options(&device, udid, IDEVICE_LOOKUP_USBMUX);
 
-        if (LOCKDOWN_E_SUCCESS !=
-            (ldret = lockdownd_start_service(client, "com.apple.afc",
-                                             &lockdownService))) {
-            lockdownd_client_free(client);
-            idevice_free(result.device);
-            qDebug() << "Failed to start AFC service: " << ldret;
-            return result;
-        }
-        if (lockdownService) {
-            qDebug() << "AFC service started successfully.";
-        } else {
-            qDebug() << "AFC service descriptor is null.";
-            // lockdownd_client_free(result.client);
-            // idevice_free(result.device);
-            // return result;
-        }
-
-        if (afc_client_new(result.device, lockdownService, &afcClient) !=
-            AFC_E_SUCCESS) {
-            lockdownd_service_descriptor_free(lockdownService);
-            lockdownd_client_free(client);
-            idevice_free(result.device);
-            qDebug() << "Failed to create AFC client: " << ldret;
-            return result;
-        }
-
-        try {
-            afc_error_t err = AFC_E_UNKNOWN_ERROR;
-            if ((err = afc2_client_new(result.device, &afc2Client)) !=
-                AFC_E_SUCCESS) {
-                qDebug() << "AFC2 client not available." << "Error:" << err;
-            } else {
-                result.afc2Client = afc2Client;
-                qDebug() << "AFC2 client created successfully.";
-            }
-        } catch (const std::exception &e) {
-            /* Fine! This only works on Jailbroken and AFC2 tweak installed
-             * devices */
-        }
-
-        pugi::xml_document infoXml;
-        get_device_info_xml(udid, 0, 0, infoXml, client, result.device);
-
-        if (infoXml.empty()) {
-            qDebug() << "Failed to retrieve device info XML for UDID: "
-                     << QString::fromUtf8(udid);
-            // Clean up resources before returning
-            // afc_client_free(result.afcClient);
-            // lockdownd_service_descriptor_free(result.lockdownService);
-            // lockdownd_client_free(result.client);
-            idevice_free(result.device);
-            return result;
-        }
-
-        std::string productType =
-            safeGetXML("ProductType", infoXml.child("plist").child("dict"));
-
-        // if (result.device) idevice_free(result.device);
-
-        fullDeviceInfo(infoXml, afcClient, result);
-        result.afcClient = afcClient;
-        result.success = true;
-
-        if (lockdownService)
-            lockdownd_service_descriptor_free(lockdownService);
-        if (client)
-            lockdownd_client_free(client);
-
-        return result;
-
-    } catch (const std::exception &e) {
-        qDebug() << "Exception in init_idescriptor_device: " << e.what();
-        // Clean up any allocated resources
-        // if (result.afcClient) afc_client_free(result.afcClient);
-        // if (result.lockdownService)
-        // lockdownd_service_descriptor_free(result.lockdownService);
-        if (client)
-            lockdownd_client_free(client);
-        if (result.device)
-            idevice_free(result.device);
-        return result;
+    if (ret != IDEVICE_E_SUCCESS) {
+        qDebug() << "Failed to connect to device: " << ret;
+        // result.error is not set here as idevice_error_t is different
+        goto cleanup;
     }
+
+    lockdownd_error_t ldret;
+    if (LOCKDOWN_E_SUCCESS != (ldret = lockdownd_client_new_with_handshake(
+                                   device, &client, APP_LABEL))) {
+        result.error = ldret;
+        qDebug() << "Failed to create lockdown client: " << ldret;
+        goto cleanup;
+    }
+
+    if (LOCKDOWN_E_SUCCESS !=
+        (ldret = lockdownd_start_service(client, "com.apple.afc",
+                                         &lockdownService))) {
+        result.error = ldret;
+        qDebug() << "Failed to start AFC service: " << ldret;
+        goto cleanup;
+    }
+
+    if (afc_client_new(device, lockdownService, &afcClient) != AFC_E_SUCCESS) {
+        qDebug() << "Failed to create AFC client.";
+
+        goto cleanup;
+    }
+
+    // AFC2 is optional, so we don't goto cleanup on failure
+    afc_error_t afc2_err;
+    if ((afc2_err = afc2_client_new(device, &afc2Client)) != AFC_E_SUCCESS) {
+        qDebug() << "AFC2 client not available. Error:" << afc2_err;
+        afc2Client = nullptr;
+    } else {
+        qDebug() << "AFC2 client created successfully.";
+    }
+
+    get_device_info_xml(udid, client, device, infoXml);
+
+    if (infoXml.empty()) {
+        qDebug() << "Failed to retrieve device info XML for UDID: "
+                 << QString::fromUtf8(udid);
+        goto cleanup;
+    }
+
+    // If we got this far, the core initialization is successful
+    result.success = true;
+    result.device = device;
+    result.afcClient = afcClient;
+    result.afc2Client = afc2Client;
+    fullDeviceInfo(infoXml, afcClient, result);
+
+cleanup:
+    if (lockdownService) {
+        lockdownd_service_descriptor_free(lockdownService);
+    }
+    if (client) {
+        lockdownd_client_free(client);
+    }
+
+    // free on error
+    if (!result.success) {
+        if (afc2Client) {
+            afc_client_free(afc2Client);
+        }
+        if (afcClient) {
+            afc_client_free(afcClient);
+        }
+        if (device) {
+            idevice_free(device);
+        }
+    }
+
+    return result;
 }
 
-IDescriptorInitDeviceResultRecovery
+iDescriptorInitDeviceResultRecovery
 init_idescriptor_recovery_device(uint64_t ecid)
 {
-    IDescriptorInitDeviceResultRecovery result;
+    qDebug() << "Initializing iDescriptor recovery device with ECID: " << ecid;
+    iDescriptorInitDeviceResultRecovery result = {};
+
     irecv_client_t client = nullptr;
-    irecv_error_t ret = IRECV_E_UNKNOWN_ERROR;
-    ret = irecv_open_with_ecid_and_attempts(&client, ecid,
-                                            RECOVERY_CLIENT_CONNECTION_TRIES);
-
-    if (ret != IRECV_E_SUCCESS) {
-        result.error = ret;
-        return result;
-    }
-    ret = irecv_get_mode(client, (int *)&result.mode);
-
-    if (ret != IRECV_E_SUCCESS) {
-        result.error = ret;
-        irecv_close(client);
-        return result;
-    }
-
-    const irecv_device_info *deviceInfo = irecv_get_device_info(client);
-    if (!deviceInfo) {
-        result.error = IRECV_E_UNKNOWN_ERROR;
-        irecv_close(client);
-        return result;
-    }
-
+    const irecv_device_info *deviceInfo = nullptr;
     irecv_device_t device = nullptr;
     const DeviceDatabaseInfo *info = nullptr;
+
+    irecv_error_t ret = irecv_open_with_ecid_and_attempts(
+        &client, ecid, RECOVERY_CLIENT_CONNECTION_TRIES);
+
+    if (ret != IRECV_E_SUCCESS) {
+        qDebug() << "Failed to open recovery client with ECID:" << ecid
+                 << "Error:" << ret;
+        result.error = ret;
+        goto cleanup;
+    }
+
+    ret = irecv_get_mode(client, (int *)&result.mode);
+    if (ret != IRECV_E_SUCCESS) {
+        qDebug() << "Failed to get recovery mode. Error:" << ret;
+        result.error = ret;
+        goto cleanup;
+    }
+
+    deviceInfo = irecv_get_device_info(client);
+    if (!deviceInfo) {
+        qDebug() << "Failed to get device info from recovery client";
+        result.error = IRECV_E_UNKNOWN_ERROR;
+        goto cleanup;
+    }
+
     if (irecv_devices_get_device_by_client(client, &device) ==
             IRECV_E_SUCCESS &&
         device && device->hardware_model) {
@@ -431,9 +414,13 @@ init_idescriptor_recovery_device(uint64_t ecid)
     result.displayName =
         info ? (info->displayName ? info->displayName : info->marketingName)
              : "Unknown Device";
-
     result.deviceInfo = *deviceInfo;
     result.success = true;
-    irecv_close(client);
+
+cleanup:
+    if (client) {
+        irecv_close(client);
+    }
+
     return result;
 }
