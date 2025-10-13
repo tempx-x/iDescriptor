@@ -1,5 +1,6 @@
 #include "fileexportdialog.h"
 #include <QApplication>
+#include <QDesktopServices>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMessageBox>
@@ -8,9 +9,10 @@
 #include <QVBoxLayout>
 
 // TODO: needs progress bar improvements
-FileExportDialog::FileExportDialog(QWidget *parent)
+FileExportDialog::FileExportDialog(const QString &exportDir, QWidget *parent)
     : QDialog(parent), m_progressBar(nullptr), m_statusLabel(nullptr),
-      m_fileLabel(nullptr), m_cancelButton(nullptr), m_layout(nullptr)
+      m_fileLabel(nullptr), m_cancelButton(nullptr), m_layout(nullptr),
+      m_exportDir(exportDir)
 {
     setupUI();
 }
@@ -136,9 +138,17 @@ void FileExportDialog::showCompletionMessage(int successful, int failed)
     QString message;
 
     if (failed == 0) {
-        message =
-            QString("Successfully exported all %1 files!").arg(successful);
-        QMessageBox::information(parentWidget(), "Export Complete", message);
+        // ASK USER TO OPEN FOLDER
+        QMessageBox::StandardButton reply;
+        reply = QMessageBox::question(
+            parentWidget(), "Export Complete",
+            QString("Successfully exported all %1 files! Would you like to "
+                    "open the output folder ?")
+                .arg(successful),
+            QMessageBox::Yes | QMessageBox::No);
+        if (reply == QMessageBox::Yes) {
+            QDesktopServices::openUrl(QUrl::fromLocalFile(m_exportDir));
+        }
     } else {
         message =
             QString("Export completed with %1 successful and %2 failed files.")

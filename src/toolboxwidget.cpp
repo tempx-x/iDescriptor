@@ -141,6 +141,9 @@ void ToolboxWidget::setupUI()
                         "Mount your iPhone's filesystem on your PC", true, ""});
     toolWidgets.append({iDescriptorTool::CableInfoWidget,
                         "View detailed cable and connection info", true, ""});
+    toolWidgets.append({iDescriptorTool::NetworkDevices,
+                        "Discover and monitor devices on your network", false,
+                        ""});
 
     for (int i = 0; i < toolWidgets.size(); ++i) {
         const auto &tool = toolWidgets[i];
@@ -224,6 +227,9 @@ ClickableWidget *ToolboxWidget::createToolbox(iDescriptorTool tool,
         break;
     case iDescriptorTool::UnmountDevImage:
         title = "Unmount Dev Image";
+        break;
+    case iDescriptorTool::NetworkDevices:
+        title = "Network Devices";
         break;
     default:
         title = "Unknown Tool";
@@ -430,6 +436,21 @@ void ToolboxWidget::onToolboxClicked(iDescriptorTool tool)
         cableInfoWidget->setWindowFlag(Qt::Window);
         cableInfoWidget->resize(600, 400);
         cableInfoWidget->show();
+    } break;
+    case iDescriptorTool::NetworkDevices: {
+        // single instance lock
+        if (!m_networkDevicesWidget) {
+            m_networkDevicesWidget = new NetworkDevicesWidget();
+            m_networkDevicesWidget->setAttribute(Qt::WA_DeleteOnClose);
+            m_networkDevicesWidget->setWindowFlag(Qt::Window);
+            m_networkDevicesWidget->resize(500, 600);
+            connect(m_networkDevicesWidget, &QObject::destroyed, this,
+                    [this]() { m_networkDevicesWidget = nullptr; });
+            m_networkDevicesWidget->show();
+        } else {
+            m_networkDevicesWidget->raise();
+            m_networkDevicesWidget->activateWindow();
+        }
     } break;
     default:
         qDebug() << "Clicked on unimplemented tool";

@@ -54,23 +54,23 @@ DeviceInfoWidget::DeviceInfoWidget(iDescriptorDevice *device, QWidget *parent)
     actionsLayout->setContentsMargins(1, 1, 1, 1);
     actionsLayout->setSpacing(10);
 
-    ClickableIconWidget *shutdownBtn = new ClickableIconWidget(
+    ZIconWidget *shutdownBtn = new ZIconWidget(
         QIcon(":/resources/icons/IcOutlinePowerSettingsNew.png"), "Shutdown",
         this);
     shutdownBtn->setIconSize(QSize(20, 20));
-    connect(shutdownBtn, &ClickableIconWidget::clicked, this,
+    connect(shutdownBtn, &ZIconWidget::clicked, this,
             [device]() { ToolboxWidget::shutdownDevice(device); });
 
-    ClickableIconWidget *restartBtn = new ClickableIconWidget(
+    ZIconWidget *restartBtn = new ZIconWidget(
         QIcon(":/resources/icons/IcTwotoneRestartAlt.png"), "Restart", this);
     restartBtn->setIconSize(QSize(20, 20));
-    connect(restartBtn, &ClickableIconWidget::clicked, this,
+    connect(restartBtn, &ZIconWidget::clicked, this,
             [device]() { ToolboxWidget::restartDevice(device); });
 
-    ClickableIconWidget *recoveryBtn = new ClickableIconWidget(
+    ZIconWidget *recoveryBtn = new ZIconWidget(
         QIcon(":/resources/icons/HugeiconsWrench01.png"), "Recovery", this);
     recoveryBtn->setIconSize(QSize(20, 20));
-    connect(recoveryBtn, &ClickableIconWidget::clicked, this,
+    connect(recoveryBtn, &ZIconWidget::clicked, this,
             [device]() { ToolboxWidget::_enterRecoveryMode(device); });
 
     actionsLayout->addWidget(shutdownBtn);

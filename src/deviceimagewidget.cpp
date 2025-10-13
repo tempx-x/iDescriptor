@@ -157,7 +157,7 @@ int DeviceImageWidget::getIosVersionFromDevice() const
 /*
     this method is only here to calculate the screen area
     so that wallpaper perfectly fits to the screen size
-    it's costy so if you want to add a new mock run
+    it's costy so if you want to add a new mockup run
     through this method qDebug the result and add it to createCompositeImage
     example :     screenRect = QRect(152, 79, 195, 296);
 */
@@ -204,12 +204,7 @@ QRect DeviceImageWidget::findScreenArea(const QPixmap &mockup) const
         bottom++;
     }
 
-    // Add a small margin to avoid drawing over the bezel anti-aliasing
-    int margin = 2;
-
-    return QRect(left + 1 + margin, top + 1 + margin,
-                 right - left - 2 - (margin * 2),
-                 bottom - top - 2 - (margin * 2));
+    return QRect(left + 1, top + 1, right - left - 2, bottom - top - 2);
 }
 
 QPixmap DeviceImageWidget::createCompositeImage() const
@@ -239,19 +234,19 @@ QPixmap DeviceImageWidget::createCompositeImage() const
         QString::fromStdString(m_device->deviceInfo.productType));
 
     if (mockupName == "3") {
-        screenRect = QRect(152, 79, 195, 296);
+        screenRect = QRect(145, 72, 209, 310);
     } else if (mockupName == "4") {
-        screenRect = QRect(421, 188, 366, 534);
+        screenRect = QRect(414, 181, 380, 548);
     } else if (mockupName == "5") {
-        screenRect = QRect(34, 113, 290, 523);
+        screenRect = QRect(27, 106, 304, 537);
     } else if (mockupName == "6") {
-        screenRect = QRect(75, 355, 1265, 2256);
+        screenRect = QRect(68, 348, 1279, 2270);
     } else if (mockupName == "x") {
-        screenRect = QRect(252, 436, 2375, 4989);
+        screenRect = QRect(245, 429, 2389, 5003);
     } else if (mockupName == "15") {
-        screenRect = QRect(22, 56, 323, 674);
+        screenRect = QRect(15, 49, 337, 688);
     } else if (mockupName == "16") {
-        screenRect = QRect(24, 61, 319, 668);
+        screenRect = QRect(17, 54, 333, 682);
     } else {
         // Fallback for unknown devices
         screenRect = QRect(mockup.width() * 0.12, mockup.height() * 0.08,

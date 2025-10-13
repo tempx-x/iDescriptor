@@ -1,4 +1,5 @@
 #include "zlineedit.h"
+#include "iDescriptor-ui.h"
 
 ZLineEdit::ZLineEdit(QWidget *parent) : QLineEdit(parent) { setupStyles(); }
 
@@ -29,7 +30,7 @@ void ZLineEdit::updateStyles()
                   "} "
                   "QLineEdit:focus { "
                   "    border: 2px solid " +
-                  qApp->palette().color(QPalette::Highlight).name() +
+                  COLOR_ACCENT_BLUE.name() +
                   "; "
                   "    outline: none; "
                   "}");

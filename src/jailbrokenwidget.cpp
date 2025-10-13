@@ -22,6 +22,7 @@
 #include <QVBoxLayout>
 #include <QWidget>
 
+// TODO: theming is broken
 JailbrokenWidget::JailbrokenWidget(QWidget *parent) : QWidget{parent}
 {
     QHBoxLayout *mainLayout = new QHBoxLayout(this);

@@ -4,6 +4,7 @@
 #include "mediapreviewdialog.h"
 #include "photoexportmanager.h"
 #include "photomodel.h"
+#include "servicemanager.h"
 #include <QComboBox>
 #include <QDebug>
 #include <QFileDialog>
@@ -19,7 +20,6 @@
 #include <QStandardPaths>
 #include <QVBoxLayout>
 #include <QtConcurrent/QtConcurrent>
-#include "servicemanager.h"
 
 void GalleryWidget::load()
 {
@@ -209,7 +209,7 @@ void GalleryWidget::onExportSelected()
 
     // Create export dialog and connect signals
     // todo:cleanup
-    auto *exportDialog = new FileExportDialog(this);
+    auto *exportDialog = new FileExportDialog(exportDir, this);
 
     // Connect PhotoExportManager signals to FileExportDialog
     connect(m_exportManager, &PhotoExportManager::exportStarted, exportDialog,
@@ -267,7 +267,7 @@ void GalleryWidget::onExportAll()
 
     // Create export dialog and connect signals
     // todo:cleanup
-    auto *exportDialog = new FileExportDialog(this);
+    auto *exportDialog = new FileExportDialog(exportDir, this);
 
     // Connect PhotoExportManager signals to FileExportDialog
     connect(m_exportManager, &PhotoExportManager::exportStarted, exportDialog,
@@ -399,8 +399,7 @@ void GalleryWidget::loadAlbumList()
 {
     // Get DCIM directory contents
     qDebug() << "Loading album list from /DCIM";
-    AFCFileTree dcimTree =
-        ServiceManager::safeGetFileTree(m_device, "/DCIM");
+    AFCFileTree dcimTree = ServiceManager::safeGetFileTree(m_device, "/DCIM");
 
     if (!dcimTree.success) {
         qDebug() << "Failed to read DCIM directory";

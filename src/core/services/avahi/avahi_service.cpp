@@ -128,7 +128,6 @@ void AvahiService::browseCallback(AvahiServiceBrowser *browser,
 
     switch (event) {
     case AVAHI_BROWSER_NEW:
-        qDebug() << "Found Apple device:" << name;
         if (!avahi_service_resolver_new(service->m_client, interface, protocol,
                                         name, type, domain, AVAHI_PROTO_UNSPEC,
                                         (AvahiLookupFlags)0, resolveCallback,

@@ -15,7 +15,8 @@ class FileExportDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit FileExportDialog(QWidget *parent = nullptr);
+    explicit FileExportDialog(const QString &exportDir,
+                              QWidget *parent = nullptr);
     ~FileExportDialog() override;
 
 public slots:
@@ -38,6 +39,7 @@ private:
     QLabel *m_fileLabel;
     QPushButton *m_cancelButton;
     QVBoxLayout *m_layout;
+    QString m_exportDir;
 };
 
 #endif // FILEEXPORTDIALOG_H

@@ -4,6 +4,7 @@
 #include "devdiskimageswidget.h"
 #include "iDescriptor-ui.h"
 #include "iDescriptor.h"
+#include "networkdeviceswidget.h"
 #include <QComboBox>
 #include <QGridLayout>
 #include <QHBoxLayout>
@@ -42,7 +43,8 @@ private:
     QList<bool> m_requiresDevice;
     iDescriptorDevice *m_currentDevice;
     std::string m_uuid;
-    DevDiskImagesWidget *m_devDiskImagesWidget;
+    DevDiskImagesWidget *m_devDiskImagesWidget = nullptr;
+    NetworkDevicesWidget *m_networkDevicesWidget = nullptr;
 
 signals:
 };

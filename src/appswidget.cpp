@@ -61,13 +61,7 @@ void AppsWidget::setupUI()
 
     m_loginButton = new QPushButton();
     m_searchEdit = new ZLineEdit();
-    m_searchEdit->setMaximumWidth(400);
-    m_searchEdit->setStyleSheet("QLineEdit { "
-                                "  padding: 8px; "
-                                "  border: 1px solid #ccc; "
-                                "  border-radius: 4px; "
-                                "  font-size: 14px; "
-                                "}");
+    m_searchEdit->setMaximumWidth(350);
 
     // --- Status and Login Button ---
     m_manager = AppStoreManager::sharedInstance();
@@ -86,10 +80,10 @@ void AppsWidget::setupUI()
     m_statusLabel->setStyleSheet("font-size: 14px; color: #666;");
 
     mainLayout->addWidget(headerWidget);
-
-    QAction *searchAction = m_searchEdit->addAction(
-        this->style()->standardIcon(QStyle::SP_FileDialogContentsView),
-        QLineEdit::TrailingPosition);
+    // todo: implement theme aware icon
+    QAction *searchAction =
+        m_searchEdit->addAction(QIcon(":/resources/icons/MdiLightMagnify.png"),
+                                QLineEdit::TrailingPosition);
     searchAction->setToolTip("Search");
     connect(searchAction, &QAction::triggered, this,
             &AppsWidget::performSearch);

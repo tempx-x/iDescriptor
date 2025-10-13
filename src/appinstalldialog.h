@@ -6,6 +6,7 @@
 #include <QDialog>
 #include <QFutureWatcher>
 #include <QLabel>
+#include <QTemporaryDir>
 
 class AppInstallDialog : public AppDownloadBaseDialog
 {
@@ -15,6 +16,7 @@ public:
                               const QString &description,
                               const QString &bundleId,
                               QWidget *parent = nullptr);
+    ~AppInstallDialog();
 
 protected:
     void reject() override;
@@ -27,7 +29,7 @@ private:
     QString m_bundleId;
     QLabel *m_statusLabel;
     QFutureWatcher<int> *m_installWatcher;
-    QString m_tempDir;
+    QTemporaryDir *m_tempDir;
     void updateDeviceList();
     void performInstallation(const QString &ipaPath, const QString &deviceUdid);
 };

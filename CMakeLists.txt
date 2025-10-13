@@ -203,11 +203,31 @@ find_package(Qt6 REQUIRED COMPONENTS Multimedia)
 find_package(Qt6 REQUIRED COMPONENTS MultimediaWidgets)
 
 
-qt_add_executable(iDescriptor
+if (WIN32)
+# todo
+    set(app_icon_resource_windows "${CMAKE_CURRENT_SOURCE_DIR}/resources/todo.rc")
+    qt_add_executable(iDescriptor
+    MANUAL_FINALIZATION
+    ${PROJECT_SOURCES}
+    ${app_icon_resource_windows}
+)
+elseif (APPLE)
+    set(MACOSX_BUNDLE_ICON_FILE icon.icns)
+    set(app_icon_macos "${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/app-icon/icon.icns")
+    set_source_files_properties(${app_icon_macos} PROPERTIES
+           MACOSX_PACKAGE_LOCATION "Resources")
+
+    qt_add_executable(iDescriptor
+    MANUAL_FINALIZATION
+    ${PROJECT_SOURCES}
+    ${app_icon_macos}
+)
+else()
+    qt_add_executable(iDescriptor
     MANUAL_FINALIZATION
     ${PROJECT_SOURCES}
 )
-
+endif()
 
 target_link_libraries(iDescriptor PRIVATE 
     Qt${QT_VERSION_MAJOR}::Widgets 

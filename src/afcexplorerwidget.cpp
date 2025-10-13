@@ -218,7 +218,8 @@ void AfcExplorerWidget::onFileListContextMenu(const QPoint &pos)
 
     bool isDir = item->data(Qt::UserRole).toBool();
     if (isDir)
-        return; // Only export files
+        return; // TODO: Implement directory export later - Only export files
+                // for now
 
     QMenu menu;
     QAction *exportAction = menu.addAction("Export");
@@ -253,7 +254,7 @@ void AfcExplorerWidget::onExportClicked()
     if (selectedItems.isEmpty())
         return;
 
-    // Only files (not directories)
+    // Only files (not directories) - TODO: Implement directory export later
     QList<QListWidgetItem *> filesToExport;
     for (QListWidgetItem *item : selectedItems) {
         if (!item->data(Qt::UserRole).toBool())
@@ -320,7 +321,11 @@ void AfcExplorerWidget::exportSelectedFile(QListWidgetItem *item,
     }
 }
 
-// TODO : abstract to services
+/*
+    FIXME  : abstract to services
+    even though we are using safe wrappers,
+    we better move this to services
+*/
 int AfcExplorerWidget::export_file_to_path(afc_client_t afc,
                                            const char *device_path,
                                            const char *local_path)
@@ -348,31 +353,22 @@ int AfcExplorerWidget::export_file_to_path(afc_client_t afc,
     }
 
     fclose(out);
-    afc_file_close(afc, handle);
+    ServiceManager::safeAfcFileClose(m_device, handle);
     return 0;
 }
 
+// should be disabled if there is an error loading afc
 void AfcExplorerWidget::onImportClicked()
 {
-    // TODO: check devices
-
-    // Select one or more files to import
     QStringList fileNames = QFileDialog::getOpenFileNames(this, "Import Files");
     if (fileNames.isEmpty())
         return;
 
-    // Use current breadcrumb directory as target
     QString currPath = "/";
     if (!m_history.isEmpty())
         currPath = m_history.top();
     if (!currPath.endsWith("/"))
         currPath += "/";
-
-    // if (!device || !client || !serviceDesc)
-    // {
-    //     qDebug() << "Failed to connect to device or lockdown service";
-    //     return;
-    // }
 
     // Import each file
     for (const QString &localPath : fileNames) {
@@ -437,16 +433,13 @@ void AfcExplorerWidget::setupFileExplorer()
     m_explorer->setStyleSheet("border : none;");
 
     // Export/Import buttons layout
-    QHBoxLayout *exportLayout = new QHBoxLayout();
-    m_exportBtn = new QPushButton("Export");
-    m_importBtn = new QPushButton("Import");
-    m_addToFavoritesBtn = new QPushButton("Add to Favorites");
-    exportLayout->addWidget(m_exportBtn);
-    exportLayout->addWidget(m_importBtn);
-    exportLayout->addWidget(m_addToFavoritesBtn);
-    exportLayout->setContentsMargins(0, 0, 0, 0);
-    exportLayout->addStretch();
-    explorerLayout->addLayout(exportLayout);
+    m_exportBtn =
+        new ZIconWidget(QIcon(":/resources/icons/PhExport.png"), "Export");
+    m_importBtn = new ZIconWidget(
+        QIcon(":/resources/icons/LetsIconsImport.png"), "Import");
+    m_addToFavoritesBtn =
+        new ZIconWidget(QIcon(":/resources/icons/MaterialSymbolsFavorite.png"),
+                        "Add to Favorites");
 
     // Navigation layout (Address Bar with embedded icons)
     m_navWidget = new QWidget();
@@ -474,17 +467,19 @@ void AfcExplorerWidget::setupFileExplorer()
     // red;");
     leftNavLayout->setContentsMargins(0, 0, 0, 0);
     leftNavLayout->setSpacing(1);
-
-    m_backButton = new ClickableIconWidget(
-        QIcon::fromTheme("go-previous", QIcon("←")), "Go Back");
+    // rename to ziconwidget
+    m_backButton = new ZIconWidget(
+        QIcon(":/resources/icons/MaterialSymbolsArrowLeftAlt.png"), "Go Back");
     m_backButton->setEnabled(false);
 
-    m_forwardButton = new ClickableIconWidget(
-        QIcon::fromTheme("go-next", QIcon("→")), "Go Forward");
+    m_forwardButton = new ZIconWidget(
+        QIcon(":/resources/icons/MaterialSymbolsArrowRightAlt.png"),
+        "Go Forward");
     m_forwardButton->setEnabled(false);
 
-    m_enterButton = new ClickableIconWidget(
-        QIcon::fromTheme("go-jump", QIcon("⏎")), "Navigate to path");
+    m_enterButton = new ZIconWidget(
+        QIcon(":/resources/icons/MaterialSymbolsLightKeyboardReturn.png"),
+        "Navigate to path");
 
     m_addressBar = new QLineEdit();
     m_addressBar->setPlaceholderText("Enter path...");
@@ -495,6 +490,9 @@ void AfcExplorerWidget::setupFileExplorer()
     leftNavLayout->addWidget(m_forwardButton);
     navLayout->addWidget(explorerLeftSideNavButtons);
     navLayout->addWidget(m_addressBar);
+    navLayout->addWidget(m_importBtn);
+    navLayout->addWidget(m_exportBtn);
+    navLayout->addWidget(m_addToFavoritesBtn);
     navLayout->addWidget(m_enterButton);
 
     // Add the container layout (which centers navWidget) to the main layout
@@ -515,24 +513,28 @@ void AfcExplorerWidget::setupFileExplorer()
     explorerLayout->addWidget(m_fileList);
 
     // Connect buttons and actions
-    connect(m_backButton, &ClickableIconWidget::clicked, this,
+    connect(m_backButton, &ZIconWidget::clicked, this,
             &AfcExplorerWidget::goBack);
-    connect(m_forwardButton, &ClickableIconWidget::clicked, this,
+    connect(m_forwardButton, &ZIconWidget::clicked, this,
             &AfcExplorerWidget::goForward);
-    connect(m_enterButton, &ClickableIconWidget::clicked, this,
+    connect(m_enterButton, &ZIconWidget::clicked, this,
             &AfcExplorerWidget::onAddressBarReturnPressed);
     connect(m_addressBar, &QLineEdit::returnPressed, this,
             &AfcExplorerWidget::onAddressBarReturnPressed);
     connect(m_fileList, &QListWidget::itemDoubleClicked, this,
             &AfcExplorerWidget::onItemDoubleClicked);
-    connect(m_exportBtn, &QPushButton::clicked, this,
+    connect(m_exportBtn, &ZIconWidget::clicked, this,
             &AfcExplorerWidget::onExportClicked);
-    connect(m_importBtn, &QPushButton::clicked, this,
+    connect(m_importBtn, &ZIconWidget::clicked, this,
             &AfcExplorerWidget::onImportClicked);
-    connect(m_addToFavoritesBtn, &QPushButton::clicked, this,
+    connect(m_addToFavoritesBtn, &ZIconWidget::clicked, this,
             &AfcExplorerWidget::onAddToFavoritesClicked);
+    connect(m_fileList->selectionModel(),
+            &QItemSelectionModel::selectionChanged, this,
+            &AfcExplorerWidget::updateButtonStates);
 
     updateNavigationButtons();
+    updateButtonStates(); // Initialize button states
     updateNavStyles();
 }
 
@@ -562,8 +564,10 @@ void AfcExplorerWidget::saveFavoritePlace(const QString &path,
 
 void AfcExplorerWidget::updateNavStyles()
 {
-    QColor bgColor = isDarkMode() ? qApp->palette().color(QPalette::Light)
-                                  : qApp->palette().color(QPalette::Dark);
+    bool isDark = isDarkMode();
+    QColor lightColor = qApp->palette().color(QPalette::Light);
+    QColor darkColor = qApp->palette().color(QPalette::Dark);
+    QColor bgColor = isDark ? lightColor : darkColor;
     QColor borderColor = qApp->palette().color(QPalette::Mid);
     QColor accentColor = qApp->palette().color(QPalette::Highlight);
 
@@ -585,9 +589,27 @@ void AfcExplorerWidget::updateNavStyles()
     // Update address bar styles to complement the nav widget
     QString addressBarStyles =
         QString("QLineEdit { background-color: %1; border-radius: 10px; "
-                "border: 1px solid %2; }")
-            .arg(bgColor.name())
-            .arg(borderColor.lighter().name());
+                "border: 1px solid %2; padding: 2px 4px; color: %3; }"
+                "QLineEdit:focus {border: 3px solid %4; }")
+            .arg(isDark ? QColor(Qt::white).name() : QColor(Qt::black).name())
+            .arg(borderColor.lighter().name())
+            .arg(isDark ? QColor(Qt::black).name() : QColor(Qt::white).name())
+            .arg(COLOR_ACCENT_BLUE.name());
 
     m_addressBar->setStyleSheet(addressBarStyles);
+}
+
+void AfcExplorerWidget::updateButtonStates()
+{
+    QList<QListWidgetItem *> selectedItems = m_fileList->selectedItems();
+
+    // Export is only enabled if non-directory items are selected
+    bool hasExportableFiles = false;
+    for (QListWidgetItem *item : selectedItems) {
+        if (!item->data(Qt::UserRole).toBool()) { // Not a directory
+            hasExportableFiles = true;
+            break;
+        }
+    }
+    m_exportBtn->setEnabled(hasExportableFiles);
 }

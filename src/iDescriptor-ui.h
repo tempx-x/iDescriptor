@@ -61,12 +61,12 @@ protected:
     }
 };
 
-class ClickableIconWidget : public QWidget
+class ZIconWidget : public QWidget
 {
     Q_OBJECT
 public:
-    ClickableIconWidget(const QIcon &icon, const QString &tooltip,
-                        QWidget *parent = nullptr)
+    ZIconWidget(const QIcon &icon, const QString &tooltip,
+                QWidget *parent = nullptr)
         : QWidget(parent), m_icon(icon), m_iconSize(24, 24), m_pressed(false)
     {
         setToolTip(tooltip);
@@ -190,6 +190,7 @@ enum class iDescriptorTool {
     TouchIdTest,
     FaceIdTest,
     UnmountDevImage,
+    NetworkDevices,
     Unknown,
     iFuse
 };

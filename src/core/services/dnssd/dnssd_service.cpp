@@ -100,8 +100,6 @@ void DNSSD_API DnssdService::browseCallback(
     DnssdService *service = static_cast<DnssdService *>(context);
 
     if (flags & kDNSServiceFlagsAdd) {
-        qDebug() << "Found Apple device:" << serviceName;
-
         // Start resolving the service
         DNSServiceRef resolveRef;
         DNSServiceErrorType err =

@@ -43,17 +43,17 @@ private slots:
 private:
     QWidget *m_explorer;
     QWidget *m_navWidget;
-    QPushButton *m_exportBtn;
-    QPushButton *m_importBtn;
-    QPushButton *m_addToFavoritesBtn;
+    ZIconWidget *m_exportBtn;
+    ZIconWidget *m_importBtn;
+    ZIconWidget *m_addToFavoritesBtn;
     QListWidget *m_fileList;
     QStack<QString> m_history;
     QStack<QString> m_forwardHistory;
     int m_currentHistoryIndex;
     QLineEdit *m_addressBar;
-    ClickableIconWidget *m_backButton;
-    ClickableIconWidget *m_forwardButton;
-    ClickableIconWidget *m_enterButton;
+    ZIconWidget *m_backButton;
+    ZIconWidget *m_forwardButton;
+    ZIconWidget *m_enterButton;
     iDescriptorDevice *m_device;
 
     // Current AFC mode
@@ -73,6 +73,7 @@ private:
     int import_file_to_device(afc_client_t afc, const char *device_path,
                               const char *local_path);
     void updateNavStyles();
+    void updateButtonStates();
 };
 
 #endif // AFCEXPLORER_H

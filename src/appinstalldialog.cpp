@@ -9,6 +9,7 @@
 #include <QLabel>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QTemporaryDir>
 #include <QVBoxLayout>
 #include <QtConcurrent/QtConcurrent>
 
@@ -170,8 +171,23 @@ void AppInstallDialog::onInstallClicked()
     m_actionButton->deleteLater();
     m_actionButton = nullptr;
 
-    m_tempDir = QDir::tempPath();
-    startDownloadProcess(m_bundleId, m_tempDir, buttonIndex, false);
+    if (m_tempDir) {
+        delete m_tempDir;
+        m_tempDir = nullptr;
+    }
+    // Create a new temporary directory for each installation
+    m_tempDir = new QTemporaryDir();
+    if (!m_tempDir->isValid()) {
+        m_statusLabel->setText("Failed to create temporary directory");
+        m_statusLabel->setStyleSheet(
+            "font-size: 14px; color: #FF3B30; padding: 5px;");
+        QMessageBox::critical(
+            this, "Error",
+            "Could not create temporary directory for download.");
+        return;
+    }
+
+    startDownloadProcess(m_bundleId, m_tempDir->path(), buttonIndex, false);
     connect(this, &AppDownloadBaseDialog::downloadFinished, this,
             [this, selectedDevice](bool success) {
                 if (success) {
@@ -182,7 +198,7 @@ void AppInstallDialog::onInstallClicked()
                        it.
                     */
                     // Find the actual downloaded IPA file
-                    QDir outDir = m_tempDir;
+                    QDir outDir(m_tempDir->path());
                     QStringList filters;
                     filters << m_bundleId + "*.ipa";
                     QStringList matches =
@@ -225,4 +241,12 @@ void AppInstallDialog::reject()
     }
 
     AppDownloadBaseDialog::reject();
+}
+
+AppInstallDialog::~AppInstallDialog()
+{
+    if (m_tempDir) {
+        delete m_tempDir;
+        m_tempDir = nullptr;
+    }
 }

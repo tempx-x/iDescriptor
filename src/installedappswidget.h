@@ -45,8 +45,6 @@ signals:
 
 protected:
     void mousePressEvent(QMouseEvent *event) override;
-    void enterEvent(QEnterEvent *event) override;
-    void leaveEvent(QEvent *event) override;
 
 private:
     void fetchAppIcon();
@@ -56,7 +54,6 @@ private:
     QString m_bundleId;
     QString m_version;
     bool m_selected = false;
-    bool m_hovered = false;
 
     QLabel *m_iconLabel;
     QLabel *m_nameLabel;

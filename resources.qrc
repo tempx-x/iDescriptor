@@ -7,6 +7,14 @@
         <file>resources/icons/IcOutlinePowerSettingsNew.png</file>
         <file>resources/icons/HugeiconsWrench01.png</file>
         <file>resources/icons/IcTwotoneRestartAlt.png</file>
+        <file>resources/icons/MaterialSymbolsArrowUpwardAltRounded.png</file>
+        <file>resources/icons/LetsIconsImport.png</file>
+        <file>resources/icons/MaterialSymbolsArrowLeftAlt.png</file>
+        <file>resources/icons/MaterialSymbolsArrowRightAlt.png</file>
+        <file>resources/icons/PhExport.png</file>
+        <file>resources/icons/MaterialSymbolsLightKeyboardReturn.png</file>
+        <file>resources/icons/MaterialSymbolsFavorite.png</file>
+        <file>resources/icons/MdiLightMagnify.png</file>
         <!-- <file>resources/icons/icon.png</file> -->
         <file>qml/MapView.qml</file>
         <!-- TODO: -->

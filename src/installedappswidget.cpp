@@ -24,7 +24,7 @@
 AppTabWidget::AppTabWidget(const QString &appName, const QString &bundleId,
                            const QString &version, QWidget *parent)
     : QGroupBox(parent), m_appName(appName), m_bundleId(bundleId),
-      m_version(version), m_selected(false), m_hovered(false)
+      m_version(version), m_selected(false)
 {
     setFixedHeight(60);
     setMinimumWidth(100);
@@ -122,41 +122,22 @@ void AppTabWidget::mousePressEvent(QMouseEvent *event)
     emit clicked();
 }
 
-void AppTabWidget::enterEvent(QEnterEvent *event)
-{
-    Q_UNUSED(event)
-    m_hovered = true;
-    updateStyles();
-}
-
-void AppTabWidget::leaveEvent(QEvent *event)
-{
-    Q_UNUSED(event)
-    m_hovered = false;
-    updateStyles();
-}
-
 void AppTabWidget::updateStyles()
 {
-    // QStyleHints::colorScheme()
-    QString borderStyle;
-    // QColor bgColor = qApp->palette().color(QPalette::Window);
+    QString style;
     QColor bgColor = isDarkMode() ? qApp->palette().color(QPalette::Light)
                                   : qApp->palette().color(QPalette::Dark);
-    qDebug() << styleSheet();
     if (m_selected) {
-        borderStyle = "QGroupBox { background-color: " +
-                      qApp->palette().color(QPalette::Highlight).name() +
-                      "; border-radius: "
-                      "10px; border : 1px solid " +
-                      bgColor.lighter().name() + "; }";
+        style = "QGroupBox { background-color: " + COLOR_ACCENT_BLUE.name() +
+                "; border-radius: "
+                "10px; border : 1px solid " +
+                bgColor.lighter().name() + "; }";
     } else {
-        borderStyle = "QGroupBox { background-color: " + bgColor.name() +
-                      "; border-radius: 10px; border: 1px solid " +
-                      bgColor.lighter().name() + "; }";
+        style = "QGroupBox { background-color: " + bgColor.name() +
+                "; border-radius: 10px; border: 1px solid " +
+                bgColor.lighter().name() + "; }";
     }
-    // update();
-    setStyleSheet(borderStyle);
+    setStyleSheet(style);
 }
 
 InstalledAppsWidget::InstalledAppsWidget(iDescriptorDevice *device,
@@ -547,7 +528,6 @@ void InstalledAppsWidget::createAppTab(const QString &appName,
         new AppTabWidget(appName, bundleId, version, this);
     connect(tabWidget, &AppTabWidget::clicked, this,
             &InstalledAppsWidget::onAppTabClicked);
-    m_appTabs.append(tabWidget);
 
     // Remove the stretch before adding the new tab
     m_tabLayout->removeItem(m_tabLayout->itemAt(m_tabLayout->count() - 1));
