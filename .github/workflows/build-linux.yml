@@ -135,10 +135,10 @@ jobs:
         working-directory: ./build
         run: |
           # Shows excluded libs for debugging
-          ../linuxdeployqt-continuous-x86_64.AppImage iDescriptor -qmldir=../qml -appimage -show-exclude-libs
+          ../linuxdeployqt-continuous-x86_64.AppImage iDescriptor -qmldir=../qml -appimage -show-exclude-libs -exclude-libs=libGL,libGLX,libEGL,libxcb,libX11,libXext,libXrandr,libXrender,libdrm
           # Build
           export VERSION=1.0.0
-          ../linuxdeployqt-continuous-x86_64.AppImage iDescriptor -qmldir=../qml -appimage
+          ../linuxdeployqt-continuous-x86_64.AppImage iDescriptor -qmldir=../qml -appimage -exclude-libs=libGL,libGLX,libEGL,libxcb,libX11,libXext,libXrandr,libXrender,libdrm -no-strip
 
       - name: Upload Artifact (Linux)
         if: runner.os == 'Linux'
