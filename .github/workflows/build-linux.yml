@@ -130,10 +130,10 @@ jobs:
         working-directory: ./build
         run: |
           # Shows excluded libs for debugging
-          ../linuxdeployqt-continuous-x86_64.AppImage iDescriptor -qmldir=../qml -appimage -show-exclude-libs -ignore-glob="libmimerapi.so"
+          ../linuxdeployqt-continuous-x86_64.AppImage iDescriptor -qmldir=../qml -appimage -show-exclude-libs -ignore-glob="libqsqlmimer.so"
           # Build
           export VERSION=1.0.0
-          ../linuxdeployqt-continuous-x86_64.AppImage iDescriptor -qmldir=../qml -appimage -ignore-glob="libmimerapi.so"
+          ../linuxdeployqt-continuous-x86_64.AppImage iDescriptor -qmldir=../qml -appimage -ignore-glob="libqsqlmimer.so"
 
       - name: Upload Artifact (Linux)
         if: runner.os == 'Linux'
