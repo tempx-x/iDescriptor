@@ -45,6 +45,31 @@ list(APPEND _qt_pkg_dirs ${CUSTOM_PKGCONFIG_PATH})
 find_package(PkgConfig REQUIRED)
 find_package(Qt6 REQUIRED COMPONENTS Widgets Multimedia MultimediaWidgets Network QuickControls2 SerialPort Positioning Location QuickWidgets) 
 
+# Ensure pkg-config can see Qt's .pc files
+# Derive Qt install location from the imported Qt6::Core target and prepend common pkgconfig paths.
+get_target_property(_qt_core_loc Qt6::Core IMPORTED_LOCATION_RELEASE)
+if(NOT _qt_core_loc)
+    get_target_property(_qt_core_loc Qt6::Core IMPORTED_LOCATION_DEBUG)
+endif()
+if(NOT _qt_core_loc)
+    get_target_property(_qt_core_loc Qt6::Core IMPORTED_LOCATION)
+endif()
+
+if(_qt_core_loc)
+    get_filename_component(_qt_lib_dir ${_qt_core_loc} DIRECTORY)  # <prefix>/lib or <prefix>/lib/<something>
+    list(APPEND _qt_pkg_dirs
+        "${_qt_lib_dir}/pkgconfig"
+        "${_qt_lib_dir}/qt/lib/pkgconfig"
+        "${_qt_lib_dir}/../lib/pkgconfig"
+        "${_qt_lib_dir}/../lib64/pkgconfig"
+    )
+    list(REMOVE_DUPLICATES _qt_pkg_dirs)
+    string (REPLACE ";" ":" _join_qt_pkgdirs "${_qt_pkg_dirs}")
+    # Prepend so Qt pkgconfig entries are found first
+    set(ENV{PKG_CONFIG_PATH} "${_join_qt_pkgdirs}:$ENV{PKG_CONFIG_PATH}")
+    message(STATUS "Prepended Qt pkgconfig dirs to PKG_CONFIG_PATH: ${_join_qt_pkgdirs}")
+endif()
+
 # Add QTermWidget
 pkg_check_modules(QTERMWIDGET REQUIRED IMPORTED_TARGET qtermwidget6)
 
