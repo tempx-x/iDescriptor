@@ -26,8 +26,9 @@ jobs:
       - name: Install Qt
         run: |
           curl -L -O https://download.qt.io/official_releases/online_installers/qt-online-installer-mac-x64-online.dmg
-          chmod u+x qt-online-installer-mac-x64-online.dmg
-          ./qt-online-installer-mac-x64-online.dmg --accept-licenses --default-answer --confirm-command install qt.qt6.672.clang_64 qt.qt6.672.addons.qtlocation.clang_64 qt.qt6.672.addons.qtmultimedia.clang_64 qt.qt6.672.addons.qtpositioning.clang_64 qt.qt6.672.addons.qtserialbus.clang_64
+          hdiutil attach qt-online-installer-mac-x64-online.dmg
+          "/Volumes/Qt Online Installer/Qt Online Installer.app/Contents/MacOS/Qt Online Installer" --accept-licenses --default-answer --confirm-command install qt.qt6.672.clang_64 qt.qt6.672.addons.qtlocation.clang_64 qt.qt6.672.addons.qtmultimedia.clang_64 qt.qt6.672.addons.qtpositioning.clang_64 qt.qt6.672.addons.qtserialbus.clang_64
+          hdiutil detach "/Volumes/Qt Online Installer"
 
       - name: Update pkgconfig path
         run: |
