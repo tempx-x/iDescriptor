@@ -23,13 +23,6 @@ jobs:
           submodules: "recursive"
           token: ${{ secrets.PAT }}
 
-      - name: Prepare Qt installation directory
-        run: |
-          QT_DIR="Qt"
-          echo "QT_DIR=${QT_DIR}" >> "$GITHUB_ENV"
-          sudo mkdir -p "${QT_DIR}"
-          sudo chown -R $USER "${QT_DIR}"
-
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
@@ -40,8 +33,7 @@ jobs:
           use-official: true
           email: ${{ secrets.QT_EMAIL }}
           pw: ${{ secrets.QT_PW }}
-          dir: ${{ env.QT_DIR }}
-
+          dir: "./"
       - name: Update pkgconfig path
         run: |
           ls "${QT_ROOT_DIR}/lib/pkgconfig"
