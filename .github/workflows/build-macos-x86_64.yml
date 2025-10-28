@@ -137,7 +137,17 @@ jobs:
 
       - name: Deploy Qt dependencies
         run: |
-          macdeployqt build/iDescriptor.app -qmldir=qml -verbose=1 -dmg
+          # Manually bundle QtMultimediaWidgets if missing
+          cp -RL "${QT_ROOT_DIR}/lib/QtMultimediaWidgets.framework" build/iDescriptor.app/Contents/Frameworks/
+
+          # Bundle libjxl_cms
+          cp /usr/local/lib/libjxl_cms.0.11.dylib build/iDescriptor.app/Contents/Frameworks/
+          install_name_tool -id "@rpath/libjxl_cms.0.11.dylib" build/iDescriptor.app/Contents/Frameworks/libjxl_cms.0.11.dylib
+          install_name_tool -change "/usr/local/lib/libjxl_cms.0.11.dylib" "@rpath/libjxl_cms.0.11.dylib" build/iDescriptor.app/Contents/Frameworks/libjxl.0.11.dylib
+
+          install_name_tool -add_rpath "@executable_path/../Frameworks" build/iDescriptor.app/Contents/MacOS/iDescriptor
+
+          macdeployqt build/iDescriptor.app -dmg -verbose=2
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
