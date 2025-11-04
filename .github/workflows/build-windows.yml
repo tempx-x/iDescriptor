@@ -80,7 +80,7 @@ jobs:
 
       - name: Download and Extract Bonjour SDK
         run: |
-          wget "https://gsf-fl.softonic.com/b18/d44/cbdcd43ad683cf6760d45ce891c3035044/bonjoursdksetup.exe?Expires=1761322683&Signature=7ffbc70604387c58f196c962d9e54e890e3aadd0&url=https://bonjour.en.softonic.com/&Filename=bonjoursdksetup.exe" -O bonjour-sdk.exe
+          wget "https://softpedia-secure-download.com/dl/1581f24d4d03bc1cbe7cbf2442d92348/690a063f/100159413/software/programming/bonjoursdksetup.exe" -O bonjour-sdk.exe
 
           EXPECTED_HASH="4ff2aae8205aec31b06743782cfcadce"
           ACTUAL_HASH=$(md5sum bonjour-sdk.exe | awk '{print $1}')
