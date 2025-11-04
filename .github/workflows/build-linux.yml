@@ -56,6 +56,9 @@ jobs:
             gstreamer1.0-plugins-bad \
             gstreamer1.0-plugins-ugly \
             gstreamer1.0-libav \
+            gstreamer1.0-alsa \
+            gstreamer1.0-pulseaudio \
+            gstreamer1.0-pipewire \
             libfuse2 \
             libunwind-dev \
             libxcb-cursor0 \
