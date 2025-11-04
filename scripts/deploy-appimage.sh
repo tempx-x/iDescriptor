@@ -97,17 +97,21 @@ for i in "${plugins[@]}"; do
     fi
 done
 
-# Copy gst-plugin-scanner and gst-ptp-helper
-if [ -f "$plugins_dir/gst-plugin-scanner" ]; then
-    cp "$plugins_dir/gst-plugin-scanner" "$plugins_target_dir/"
+# Copy gst-plugin-scanner and gst-ptp-helper by searching for them
+scanner_path=$(find /usr/lib -name gst-plugin-scanner 2>/dev/null | head -n 1)
+if [ -n "$scanner_path" ] && [ -f "$scanner_path" ]; then
+    echo "Copying gst-plugin-scanner from $scanner_path"
+    cp "$scanner_path" "$plugins_target_dir/"
 else
-    echo "Warning: gst-plugin-scanner not found in $plugins_dir"
+    echo "Warning: gst-plugin-scanner could not be found on the system."
 fi
 
-if [ -f "$plugins_dir/gst-ptp-helper" ]; then
-    cp "$plugins_dir/gst-ptp-helper" "$plugins_target_dir/"
+helper_path=$(find /usr/lib -name gst-ptp-helper 2>/dev/null | head -n 1)
+if [ -n "$helper_path" ] && [ -f "$helper_path" ]; then
+    echo "Copying gst-ptp-helper from $helper_path"
+    cp "$helper_path" "$plugins_target_dir/"
 else
-    echo "Warning: gst-ptp-helper not found in $plugins_dir"
+    echo "Warning: gst-ptp-helper could not be found on the system."
 fi
 
 mkdir -p "$APPDIR/apprun-hooks"
