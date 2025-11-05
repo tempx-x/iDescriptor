@@ -26,20 +26,6 @@ jobs:
           submodules: "recursive"
           token: ${{ secrets.PAT }}
 
-      - name: Setup .NET SDK
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: "8.x"
-
-      - name: Install WiX Toolset
-        run: |
-          dotnet tool install --global wix --version 4.0.5
-
-      - name: Install WiX UI Extension
-        run: |
-          wix extension add --global WixToolset.UI.wixext/4.0.5
-          wix extension list
-
       - name: Setup MSYS2
         uses: msys2/setup-msys2@v2
         with:
@@ -72,13 +58,19 @@ jobs:
             mingw-w64-x86_64-gst-plugins-ugly
             mingw-w64-x86_64-gst-libav
 
-      - name: Verify CMake and CPack in PowerShell
-        shell: pwsh
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.x"
+
+      - name: Install WiX Toolset
         run: |
-          Get-Command cmake
-          cmake --version
-          Get-Command cpack
-          cpack --version
+          dotnet tool install --global wix --version 4.0.5
+
+      - name: Install WiX UI Extension
+        run: |
+          wix extension add --global WixToolset.UI.wixext/4.0.5
+          wix extension list
 
       - name: Set PKG_CONFIG environment variable
         run: echo "PKG_CONFIG_EXECUTABLE=C:/msys64/mingw64/bin/pkg-config.exe" >> $GITHUB_ENV
