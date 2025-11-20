@@ -2,6 +2,18 @@ name: Build Linux
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Build version (e.g., v1.2.3)"
+        required: true
+        default: "dev"
+  workflow_call:
+    inputs:
+      version:
+        description: "Build version (e.g., v1.2.3)"
+        required: true
+        type: string
+        default: "dev"
 env:
   QT_VERSION: "6.7.2"
   GO_VERSION: "1.23.0"
@@ -150,10 +162,10 @@ jobs:
 
       - name: Build AppImage
         run: |
-          export VERSION=1.0.0
+          export VERSION=${{ inputs.version }}
           # linuxdeployqt tries to bundle SQL drivers which we don't need
           rm -rf ${{ github.workspace }}/Qt/{${{ env.QT_VERSION }}/gcc_64/plugins/sqldrivers/**
-          ./scripts/deploy-appimage.sh $VERSION
+          ./scripts/deploy-appimage.sh ${{ inputs.version }}
 
       - name: Upload Artifact (Linux)
         if: runner.os == 'Linux'

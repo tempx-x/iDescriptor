@@ -2,6 +2,18 @@ name: Build Windows
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Build version (e.g., v1.2.3)"
+        required: true
+        default: "dev"
+  workflow_call:
+    inputs:
+      version:
+        description: "Build version (e.g., v1.2.3)"
+        required: true
+        type: string
+        default: "dev"
 env:
   QT_VERSION: "6.8.0"
   GO_VERSION: "1.23.0"

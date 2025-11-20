@@ -1,21 +1,47 @@
-name: Build iDescriptor
+name: Build & Release iDescriptor
 
 on:
-  # push:
-  #   branches: ["main"]
-  # pull_request:
-  #   branches: ["main"]
+  push:
+    tags:
+      - "v*"
   workflow_dispatch:
 
 jobs:
   build-linux:
     uses: ./.github/workflows/build-linux.yml
+    with:
+      version: ${{ github.ref_name }}
     secrets: inherit
 
   build-windows:
     uses: ./.github/workflows/build-windows.yml
+    with:
+      version: ${{ github.ref_name }}
     secrets: inherit
 
   build-macos:
     uses: ./.github/workflows/build-macos.yml
+    with:
+      version: ${{ github.ref_name }}
     secrets: inherit
+
+  release:
+    needs: [build-linux, build-windows, build-macos]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Prepare output folder
+        run: mkdir target
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v6
+        with:
+          path: target
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: target/*
+          tag: ${{ github.ref }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -3,17 +3,31 @@
 set -euo pipefail
 
 ARCH="${1:-x86_64}"
+VERSION="${2:-dev}"
 BUILD_DIR="build"
 APP_PATH="${BUILD_DIR}/iDescriptor.app"
 
-echo "Starting deployment for architecture: ${ARCH}"
 
-# Deploy Qt dependencies
-echo "Deploying Qt dependencies..."
-macdeployqt "${APP_PATH}" -qmldir=qml -verbose=2
+echo "Deploying iDescriptor DMG for ${ARCH} architecture (version: ${VERSION})"
 
-# Bundle GStreamer
-echo "Bundling GStreamer..."
+# Determine the platform-specific suffix for the DMG name based on architecture
+PLATFORM_SUFFIX=""
+if [ "${ARCH}" == "x86_64" ]; then
+  PLATFORM_SUFFIX="Apple_Intel"
+elif [ "${ARCH}" == "arm64" ]; then
+  PLATFORM_SUFFIX="Apple_Silicon"
+else
+  echo "Error: Unsupported architecture '${ARCH}'."
+  exit 1
+fi
+
+# Ensure the app exists
+if [ ! -d "${APP_PATH}" ]; then
+  echo "Error: ${APP_PATH} not found."
+  exit 1
+fi
+
+
 GST_PLUGIN_DIR="${APP_PATH}/Contents/Frameworks/gstreamer"
 mkdir -p "${GST_PLUGIN_DIR}"
 
@@ -30,28 +44,26 @@ PLUGINS=(
   "libgstvolume"
 )
 
+BREW_PREFIX="$(brew --prefix)"
+
+# Copy GStreamer plugins
 for plugin in "${PLUGINS[@]}"; do
-  cp "$(brew --prefix gstreamer)/lib/gstreamer-1.0/${plugin}.dylib" "${GST_PLUGIN_DIR}/"
+  cp "${BREW_PREFIX}/lib/gstreamer-1.0/${plugin}.dylib" "${GST_PLUGIN_DIR}/"
 done
 
+# Copy gst-plugin-scanner
 cp "$(brew --prefix gstreamer)/libexec/gstreamer-1.0/gst-plugin-scanner" "${APP_PATH}/Contents/Frameworks/"
 
 # Bundle libjxl_cms
-echo "Bundling libjxl_cms..."
-cp "$(brew --prefix)/lib/libjxl_cms.0.11.dylib" "${APP_PATH}/Contents/Frameworks/"
+# For some reason libjxl_cms is not bundled by macdeployqt, so we do it manually
+cp "${BREW_PREFIX}/lib/libjxl_cms.0.11.dylib" "${APP_PATH}/Contents/Frameworks/"
 install_name_tool -id "@rpath/libjxl_cms.0.11.dylib" "${APP_PATH}/Contents/Frameworks/libjxl_cms.0.11.dylib"
-install_name_tool -change "$(brew --prefix)/lib/libjxl_cms.0.11.dylib" "@rpath/libjxl_cms.0.11.dylib" "${APP_PATH}/Contents/Frameworks/libjxl.0.11.dylib"
 
-# Add rpath to main executable
-echo "Adding rpath to main executable..."
+# Add RPATH to main executable
 install_name_tool -add_rpath "@executable_path/../Frameworks" "${APP_PATH}/Contents/MacOS/iDescriptor"
 
-# Fix GStreamer library paths
-echo "Fixing GStreamer library paths..."
-FRAMEWORKS_DIR="${APP_PATH}/Contents/Frameworks"
-BREW_PREFIX="$(brew --prefix)"
 
-# Copy GStreamer core libraries
+# Copy GStreamer + GLib core libraries
 GST_LIBS=(
   "libgstreamer-1.0.0.dylib"
   "libgstbase-1.0.0.dylib"
@@ -62,6 +74,8 @@ GST_LIBS=(
   "libgsttag-1.0.0.dylib"
   "libgstriff-1.0.0.dylib"
   "libgstcodecparsers-1.0.0.dylib"
+  "libgstrtp-1.0.0.dylib"
+  "libgstsdp-1.0.0.dylib"
   "libglib-2.0.0.dylib"
   "libgobject-2.0.0.dylib"
   "libgmodule-2.0.0.dylib"
@@ -69,79 +83,24 @@ GST_LIBS=(
   "libgthread-2.0.0.dylib"
 )
 
+FRAMEWORKS_DIR="${APP_PATH}/Contents/Frameworks"
+
 for lib in "${GST_LIBS[@]}"; do
   if [ -f "${BREW_PREFIX}/lib/${lib}" ]; then
     cp "${BREW_PREFIX}/lib/${lib}" "${FRAMEWORKS_DIR}/"
     install_name_tool -id "@rpath/${lib}" "${FRAMEWORKS_DIR}/${lib}"
-    echo "Copied and fixed ID for ${lib}"
+    echo "✓ Copied and fixed ID for ${lib}"
   fi
 done
 
-# For some reason libavfilter sometimes doesnt get copied by macdeployqt 
+# Copy FFmpeg libavfilter
 FFMPEG_LIB_DIR="$(brew --prefix ffmpeg)/lib"
 cp "${FFMPEG_LIB_DIR}"/libavfilter.*.dylib "${FRAMEWORKS_DIR}/"
 
-# Copy additional audio-related libraries that are missing
-echo "Bundling additional audio libraries..."
-ADDITIONAL_LIBS=(
-  "libarchive.13.dylib"
-  "libass.9.dylib" 
-  "libb2.1.dylib"
-  "libfribidi.0.dylib"
-  "libgif.dylib"
-  "libgraphite2.3.dylib"
-  "libharfbuzz.0.dylib"
-  "libjpeg.8.dylib"
-  "liblcms2.2.dylib"
-  "libleptonica.6.dylib"
-  "liblz4.1.dylib"
-  "librubberband.3.dylib"
-  "libsamplerate.0.dylib"
-  "libtesseract.5.dylib"
-  "libtiff.6.dylib"
-  "libunibreak.6.dylib"
-  "libvidstab.1.2.dylib"
-  "libzimg.2.dylib"
-)
+macdeployqt "${APP_PATH}" -qmldir=qml -verbose=2
 
-for lib in "${ADDITIONAL_LIBS[@]}"; do
-  if [ -f "${BREW_PREFIX}/lib/${lib}" ]; then
-    cp "${BREW_PREFIX}/lib/${lib}" "${FRAMEWORKS_DIR}/"
-    install_name_tool -id "@rpath/${lib}" "${FRAMEWORKS_DIR}/${lib}"
-  else
-    echo "Warning: ${lib} not found, skipping..."
-  fi
-done
+DMG_NAME="iDescriptor-${VERSION}-${PLATFORM_SUFFIX}.dmg"
 
-# Fix dependencies in all GStreamer plugins
-echo "Fixing GStreamer plugin dependencies..."
-for plugin in "${GST_PLUGIN_DIR}"/*.dylib; do
-  echo "Fixing plugin: $(basename "${plugin}")"
-  
-  # Get all dependencies and fix them
-  otool -L "${plugin}" | grep -E "${BREW_PREFIX}" | awk '{print $1}' | while read dep; do
-    depname=$(basename "${dep}")
-    echo "  Changing ${depname}"
-    install_name_tool -change "${dep}" "@rpath/${depname}" "${plugin}" 2>/dev/null || true
-  done
-done
-
-# Fix dependencies in GStreamer core libraries themselves
-echo "Fixing GStreamer core library dependencies..."
-for lib in "${FRAMEWORKS_DIR}"/libgst*.dylib "${FRAMEWORKS_DIR}"/libglib*.dylib "${FRAMEWORKS_DIR}"/libgobject*.dylib "${FRAMEWORKS_DIR}"/libgmodule*.dylib "${FRAMEWORKS_DIR}"/libgio*.dylib "${FRAMEWORKS_DIR}"/libgthread*.dylib; do
-  if [ -f "${lib}" ]; then
-    echo "Fixing library: $(basename "${lib}")"
-    
-    otool -L "${lib}" | grep -E "${BREW_PREFIX}" | awk '{print $1}' | while read dep; do
-      depname=$(basename "${dep}")
-      echo "  Changing ${depname}"
-      install_name_tool -change "${dep}" "@rpath/${depname}" "${lib}" 2>/dev/null || true
-    done
-  fi
-done
-
-# Create DMG
-echo "Creating DMG..."
 create-dmg \
   --volname "iDescriptor" \
   --volicon "resources/icons/app-icon/icon.icns" \
@@ -151,7 +110,5 @@ create-dmg \
   --icon "iDescriptor.app" 175 190 \
   --hide-extension "iDescriptor.app" \
   --app-drop-link 425 190 \
-  "${BUILD_DIR}/iDescriptor-macOS-${ARCH}.dmg" \
+  "${BUILD_DIR}/${DMG_NAME}" \
   "${APP_PATH}"
-
-echo "Deployment complete for architecture: ${ARCH}"

@@ -2,6 +2,18 @@ name: Build macOS
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Build version (e.g., v1.2.3)"
+        required: true
+        default: "dev"
+  workflow_call:
+    inputs:
+      version:
+        description: "Build version (e.g., v1.2.3)"
+        required: true
+        type: string
+        default: "dev"
 env:
   QT_VERSION: "6.7.2"
   GO_VERSION: "1.23.0"
@@ -19,8 +31,8 @@ jobs:
         include:
           - runner: macos-15-intel
             arch: x86_64
-          # - runner: macos-14
-          #   arch: arm64
+          - runner: macos-14
+            arch: arm64
     runs-on: ${{ matrix.runner }}
 
     steps:
@@ -140,7 +152,7 @@ jobs:
         run: cmake --build build --config Release
 
       - name: Deploy and create DMG
-        run: ./deploy-dmg.sh ${{ matrix.arch }}
+        run: ./scripts/deploy-dmg.sh ${{ matrix.arch }} ${{ inputs.version }}
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
