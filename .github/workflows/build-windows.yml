@@ -209,6 +209,11 @@ jobs:
           # Find the generated files and set them as outputs
           $msiFile = Get-ChildItem -Path "artifacts/*.msi" | Select-Object -First 1
           $zipFile = Get-ChildItem -Path "artifacts/*.zip" | Select-Object -First 1
+
+          $newZipName = $zipFile.Name.Replace(".zip", ".portable.zip")
+          Rename-Item -Path $zipFile.FullName -NewName $newZipName
+          $zipFile = Get-ChildItem -Path "artifacts/*.portable.zip" | Select-Object -First 1
+
           echo "msi_name=$($msiFile.Name)" >> $env:GITHUB_OUTPUT
           echo "msi_path=$($msiFile.FullName)" >> $env:GITHUB_OUTPUT
           echo "zip_name=$($zipFile.Name)" >> $env:GITHUB_OUTPUT

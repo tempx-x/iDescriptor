@@ -1,0 +1,219 @@
+name: iDescriptor CI (Linux)
+
+on:
+  workflow_dispatch:
+env:
+  QT_VERSION: "6.7.2"
+  GO_VERSION: "1.23.0"
+  LIBPLIST_VER: "2.7.0"
+  LIBTATSU_VER: "1.0.5"
+  LIBIMOBILEDEVICE_GLUE_VER: "1.3.2"
+  LIBIMOBILEDEVICE_VER: "1.4.0"
+  LIBIRECOVERY_VER: "1.3.1"
+  IFUSE_VER: "1.2.0"
+  LIBUSBMUXD_VER: "2.1.1"
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "^${{ env.GO_VERSION }}"
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            autoconf \
+            automake \
+            checkinstall \
+            git \
+            pkg-config \
+            libpugixml-dev \
+            libusb-1.0-0-dev \
+            libqrencode-dev \
+            libcurl4-openssl-dev \
+            libssl-dev \
+            libtool-bin \
+            libreadline-dev \
+            libavahi-compat-libdnssd-dev \
+            libavcodec-dev \
+            libavutil-dev \
+            libswscale-dev \
+            libgstreamer1.0-dev \
+            libgstreamer-plugins-base1.0-dev \
+            gstreamer1.0-plugins-good \
+            gstreamer1.0-plugins-bad \
+            gstreamer1.0-plugins-ugly \
+            gstreamer1.0-libav \
+            gstreamer1.0-alsa \
+            gstreamer1.0-pulseaudio \
+            gstreamer1.0-pipewire \
+            libfuse2 \
+            libunwind-dev \
+            libxcb-cursor0 \
+            libxkbcommon-x11-0 \
+            libheif-dev \
+            libzip-dev \
+            libssh-dev \
+            libfuse3-dev \
+            libavformat-dev \
+            libavcodec-dev \
+            libavutil-dev \
+            libswscale-dev
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: ${{ env.QT_VERSION }}
+          modules: "qtmultimedia qtlocation qtpositioning qtserialport"
+          dir: ${{ github.workspace }}
+
+      - name: Compile additional dependencies
+        run: |
+          git clone https://github.com/lxqt/lxqt-build-tools.git
+          pushd lxqt-build-tools
+          mkdir build && cd build
+          cmake ..
+          sudo make install
+          popd
+
+          git clone https://github.com/lxqt/qtermwidget.git
+          pushd qtermwidget
+          mkdir build && cd build
+          cmake ..
+          sudo make install
+          popd
+
+      - name: Build libimobiledevice suite (versioned tarballs)
+        run: |
+          set -euo pipefail
+          workspace="$PWD"
+          tmp="$PWD/_tmp_libs"
+          mkdir -p "$tmp"
+          cd "$tmp"
+
+          base_url="https://github.com/libimobiledevice"
+
+          libs=( "libplist" "libtatsu" "libimobiledevice-glue" "libusbmuxd" "libimobiledevice" "ifuse" )
+
+          for name in "${libs[@]}"; do
+            ver_var=$(echo "${name^^}_VER" | sed 's/-/_/g')   # e.g. LIBPLIST_VER
+            ver="${!ver_var:-}"
+            if [ -z "$ver" ]; then
+              echo "Version for $name not set (env var $ver_var)"
+              exit 1
+            fi
+
+            archive="${name}-${ver}.tar.bz2"
+            url="${base_url}/${name}/releases/download/${ver}/${archive}"
+            echo "=== Processing $name $ver ==="
+            echo "URL: $url"
+            curl -L -o "$archive" "$url"
+
+            echo "Extracting $archive"
+            tar xjf "$archive"
+
+            srcdir="${name}-${ver}"
+            pushd "$srcdir"
+
+            ./configure
+
+
+            make -j"$(nproc)" && sudo make install
+            popd
+            echo "Installed $name $ver"
+          done
+
+          # cleanup
+          cd "$workspace"
+          rm -rf "$tmp"
+
+      - name: Update linker cache
+        run: sudo ldconfig
+
+      - name: Configure RECOVERY_DEVICE_SUPPORT=OFF
+        run: |
+          cmake -B build -S . -DCMAKE_BUILD_TYPE=Release \
+          -DRUN_CLANG_TIDY=OFF \
+          -DCMAKE_INSTALL_PREFIX=/usr \
+          -DENABLE_RECOVERY_DEVICE_SUPPORT=OFF \
+          -DPACKAGE_MANAGER_MANAGED=ON \
+          -DPACKAGE_MANAGER_HINT=yay/paru
+
+      - name: Build with CMake (RECOVERY_DEVICE_SUPPORT=OFF)
+        run: cmake --build build --config Release
+
+      - name: Build libirecovery only
+        run: |
+          set -euo pipefail
+          workspace="$PWD"
+          tmp="$PWD/_tmp_libs"
+          mkdir -p "$tmp"
+          cd "$tmp"
+
+          base_url="https://github.com/libimobiledevice"
+
+          libs=( "libirecovery" )
+
+          for name in "${libs[@]}"; do
+            ver_var=$(echo "${name^^}_VER" | sed 's/-/_/g')   # e.g. LIBPLIST_VER
+            ver="${!ver_var:-}"
+            if [ -z "$ver" ]; then
+              echo "Version for $name not set (env var $ver_var)"
+              exit 1
+            fi
+
+            archive="${name}-${ver}.tar.bz2"
+            url="${base_url}/${name}/releases/download/${ver}/${archive}"
+            echo "=== Processing $name $ver ==="
+            echo "URL: $url"
+            curl -L -o "$archive" "$url"
+
+            echo "Extracting $archive"
+            tar xjf "$archive"
+
+            srcdir="${name}-${ver}"
+            pushd "$srcdir"
+
+            ./configure
+
+
+            make -j"$(nproc)" && sudo make install
+            popd
+            echo "Installed $name $ver"
+          done
+
+          # cleanup
+          cd "$workspace"
+          rm -rf "$tmp"
+
+      - name: Configure CMake
+        run: |
+          cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DRUN_CLANG_TIDY=OFF
+
+      - name: Build with CMake
+        run: cmake --build build --config Release
+
+      - name: Build AppImage
+        run: |
+          export VERSION=1.0.0
+          # linuxdeployqt tries to bundle SQL drivers which we don't need
+          rm -rf ${{ github.workspace }}/Qt/{${{ env.QT_VERSION }}/gcc_64/plugins/sqldrivers/**
+          ./scripts/deploy-appimage.sh $VERSION
+
+      - name: Upload Artifact (Linux)
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: iDescriptor-AppImage
+          path: iDescriptor-*.AppImage

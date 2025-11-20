@@ -148,3 +148,14 @@ export QML_SOURCES_PATHS="./qml"
             --plugin qt \
             --exclude-library libGL,libGLX,libEGL,libOpenGL,libdrm,libva,libvdpau,libxcb,libxcb-glx,libxcb-dri2,libxcb-dri3,libX11,libXext,libXrandr,libXrender,libXfixes,libXau,libXdmcp,libqsqlmimer,libmysqlclient,libmysqlclient \
             --output appimage
+
+# Find the generated AppImage and rename it
+APPIMAGE_FILE=$(find . -maxdepth 1 -name "iDescriptor*.AppImage")
+if [ -n "$APPIMAGE_FILE" ]; then
+    mv "$APPIMAGE_FILE" "iDescriptor-${VERSION}-Linux_x86_64.AppImage"
+    chmod +x "iDescriptor-${VERSION}-Linux_x86_64.AppImage"
+    echo "Renamed AppImage to iDescriptor-${VERSION}-Linux_x86_64.AppImage"
+else
+    echo "Error: Could not find generated AppImage file."
+    exit 1
+fi
