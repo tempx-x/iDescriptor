@@ -1,0 +1,245 @@
+#FIXME: device detection does not work, events do not fire off
+#we need to figure out what plugs(permissions) are required
+#till then we can not release this snap
+name: idescriptor
+base: core24 # Use core24 for newer libraries and KDE Frameworks 6
+version: "0.1.0" # This will be automatically replaced by the git tag during build
+summary: A free and open-source idevice management tool.
+title: iDescriptor
+license: AGPL-3.0-or-later
+contact: https://github.com/iDescriptor/iDescriptor/issues
+website: https://github.com/iDescriptor/iDescriptor
+source-code: https://github.com/iDescriptor/iDescriptor
+issues: https://github.com/iDescriptor/iDescriptor/issues
+donation: https://github.com/iDescriptor/iDescriptor
+description: |
+  iDescriptor is a cross-platform, open-source, and free iDevice management
+  tool written in C++ with Qt. It allows users to manage their iOS devices,
+  including file system access, application management, and device information
+  retrieval.
+
+confinement: strict
+grade: stable
+
+apps:
+  idescriptor:
+    command: usr/bin/idescriptor
+    desktop: usr/share/applications/iDescriptor.desktop
+    extensions: [kde-neon-6]
+    environment:
+      LD_LIBRARY_PATH: $SNAP/usr/local/lib:$SNAP/usr/local/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
+    plugs:
+      # Auto-connecting plugs
+      - desktop
+      - opengl
+      - network
+      - home
+      # Plugs requiring manual connection
+      - raw-usb
+      - usbmuxd
+      - fuse-support
+      - hardware-observe
+      - system-observe
+      - usbmuxd-socket
+
+plugs:
+  usbmuxd-socket:
+    interface: system-files
+    read:
+      - /var/run/usbmuxd
+    write:
+      - /var/run/usbmuxd
+
+parts:
+  # This part downloads and builds the required libimobiledevice suite from source,
+  # mirroring the process in your GitHub Actions workflow.
+  libimobiledevice-suite:
+    plugin: nil
+    build-packages:
+      - build-essential
+      - autoconf
+      - automake
+      - libtool
+      - pkg-config
+      - libusb-1.0-0-dev
+      - libssl-dev
+      - libreadline-dev
+      - libfuse-dev # For ifuse
+      - curl
+    override-build: |
+      set -euo pipefail
+
+      # Ensure pkg-config can find the libraries as they are built and installed
+      export PKG_CONFIG_PATH="$SNAPCRAFT_PART_INSTALL/usr/local/lib/pkgconfig:$SNAPCRAFT_PART_INSTALL/usr/local/lib/x86_64-linux-gnu/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+
+      LIBPLIST_VER="2.7.0"
+      LIBTATSU_VER="1.0.5"
+      LIBIMOBILEDEVICE_GLUE_VER="1.3.2"
+      LIBIMOBILEDEVICE_VER="1.4.0"
+      LIBIRECOVERY_VER="1.3.1"
+      IFUSE_VER="1.2.0"
+      LIBUSBMUXD_VER="2.1.1"
+
+      base_url="https://github.com/libimobiledevice"
+      libs=( "libplist" "libtatsu" "libimobiledevice-glue" "libusbmuxd" "libimobiledevice" "libirecovery" "ifuse" )
+
+      for name in "${libs[@]}"; do
+        ver_var=$(echo "${name^^}_VER" | sed 's/-/_/g')
+        ver="${!ver_var}"
+        archive="${name}-${ver}.tar.bz2"
+        url="${base_url}/${name}/releases/download/${ver}/${archive}"
+
+        echo "=== Processing $name $ver from $url ==="
+        curl --retry 3 -L -o "$archive" "$url"
+        tar xjf "$archive"
+        pushd "${name}-${ver}"
+        # Install into a custom prefix inside the snap
+        ./configure --prefix=$SNAPCRAFT_PART_INSTALL/usr/local
+        make -j"$(nproc)"
+        make install
+        popd
+      done
+
+  # Build lxqt-build-tools, a dependency for qtermwidget
+  lxqt-build-tools:
+    source: https://github.com/lxqt/lxqt-build-tools.git
+    source-tag: "2.0.0" # Use a stable tag
+    plugin: cmake
+    cmake-parameters:
+      - -DCMAKE_INSTALL_PREFIX=/usr
+
+  # Build qtermwidget from source
+  qtermwidget:
+    after: [lxqt-build-tools]
+    source: https://github.com/lxqt/qtermwidget.git
+    source-tag: "2.0.0" # Use a stable tag
+    plugin: cmake
+    cmake-parameters:
+      - -DCMAKE_INSTALL_PREFIX=/usr
+      - -DCMAKE_BUILD_TYPE=Release
+    build-packages:
+      - qt6-base-dev
+      - qt6-tools-dev
+      - qt6-tools-dev-tools
+    override-build: |
+      # Ensure lxqt-build-tools CMake files are findable
+      export CMAKE_PREFIX_PATH=$SNAPCRAFT_STAGE/usr:$CMAKE_PREFIX_PATH
+      snapcraftctl build
+    stage:
+      - usr/include
+      - usr/lib
+      - usr/share
+
+  # Build the main iDescriptor application
+  idescriptor:
+    after: [libimobiledevice-suite, qtermwidget]
+    plugin: cmake
+    source: .
+    cmake-parameters:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DPROJECT_VERSION=$SNAPCRAFT_PROJECT_VERSION
+      - -DPACKAGE_MANAGER_MANAGED=ON
+      - -DPACKAGE_MANAGER_HINT="Snap Store"
+      - -DSNAPCRAFT_BUILD=ON
+      - -DCMAKE_INSTALL_PREFIX=/usr
+      # - -DCMAKE_INSTALL_RPATH=/snap/idescriptor/usr/local/lib:/snap/idescriptor/usr/lib/x86_64-linux-gnu:/snap/idescriptor/usr/lib:\$ORIGIN
+      - -DCMAKE_PREFIX_PATH="$SNAPCRAFT_STAGE/usr/local;$SNAPCRAFT_STAGE/usr"
+      - -DCMAKE_LIBRARY_PATH="$SNAPCRAFT_STAGE/usr/local/lib;$SNAPCRAFT_STAGE/usr/local/lib/x86_64-linux-gnu"
+      - -DCMAKE_INCLUDE_PATH="$SNAPCRAFT_STAGE/usr/local/include"
+    build-packages:
+      - patchelf
+      - golang-go
+      - libpugixml-dev
+      - libqrencode-dev
+      - libcurl4-openssl-dev
+      - libavahi-compat-libdnssd-dev
+      - libavcodec-dev
+      - libavutil-dev
+      - libswscale-dev
+      - libgstreamer1.0-dev
+      - libgstreamer-plugins-base1.0-dev
+      - libheif-dev
+      - libzip-dev
+      - libssh-dev
+      - libfuse3-dev
+      - libavformat-dev
+      - libpulse-dev
+    stage-packages:
+      - gstreamer1.0-plugins-good
+      - gstreamer1.0-plugins-bad
+      - gstreamer1.0-plugins-ugly
+      - gstreamer1.0-libav
+      - libfuse2
+      - libpulse0
+      - libavahi-compat-libdnssd1
+      - libpugixml1v5
+      # - qt6-multimedia-dev # Add Qt6 multimedia development files
+      # - libqt6multimedia6 # Add Qt6 multimedia runtime
+      # - libqt6multimediawidgets6 # Add Qt6 multimedia widgets
+      - gstreamer1.0-qt6 # GStreamer Qt6 integration
+      - gstreamer1.0-tools # GStreamer tools
+      # - libqt6location6    # Qt6 Location development files
+      # - libqt6positioning6 # Qt6 Positioning development files
+      # - qml6-module-qtlocation # QML Location module
+      # - qml6-module-qtpositioning # QML Positioning module
+    override-build: |
+      set -euo pipefail
+      # Keep all the export commands as they are
+      export PKG_CONFIG_PATH=$SNAPCRAFT_STAGE/usr/local/lib/pkgconfig:$SNAPCRAFT_STAGE/usr/local/lib/x86_64-linux-gnu/pkgconfig:$PKG_CONFIG_PATH
+      export CMAKE_PREFIX_PATH=$SNAPCRAFT_STAGE/usr/local:$SNAPCRAFT_STAGE/usr:$CMAKE_PREFIX_PATH
+      export LD_LIBRARY_PATH=$SNAPCRAFT_STAGE/usr/local/lib:$SNAPCRAFT_STAGE/usr/local/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
+      export CFLAGS="-I$SNAPCRAFT_STAGE/usr/local/include ${CFLAGS:-}"
+      export CXXFLAGS="-I$SNAPCRAFT_STAGE/usr/local/include ${CXXFLAGS:-}"
+      export LDFLAGS="-L$SNAPCRAFT_STAGE/usr/local/lib -L$SNAPCRAFT_STAGE/usr/local/lib/x86_64-linux-gnu ${LDFLAGS:-}"
+      export CMAKE_INCLUDE_PATH="$SNAPCRAFT_STAGE/usr/local/include"
+
+      echo "=== Debug: Checking for libimobiledevice headers ==="
+      ls -la $SNAPCRAFT_STAGE/usr/local/include/ || echo "No include directory found"
+      ls -la $SNAPCRAFT_STAGE/usr/local/include/libimobiledevice/ || echo "No libimobiledevice directory found"
+
+      echo "Checking staged mobiledevice libs:"
+      ls -1 $SNAPCRAFT_STAGE/usr/local/lib | grep -E 'imobiledevice|irecovery|usbmuxd' || { echo "Missing expected libs"; exit 1; }
+      echo "Checking staged mobiledevice headers:"
+      ls -1 $SNAPCRAFT_STAGE/usr/local/include/libimobiledevice/ || { echo "Missing libimobiledevice headers"; exit 1; }
+
+      # Provide generic soname symlinks if CMake can't match versioned names
+      for lib in imobiledevice irecovery usbmuxd; do
+        for f in $SNAPCRAFT_STAGE/usr/local/lib/lib${lib}-*.so; do
+          [ -e "$f" ] || continue
+          base="$SNAPCRAFT_STAGE/usr/local/lib/lib${lib}.so"
+          [ -e "$base" ] || ln -s "$(basename "$f")" "$base"
+        done
+      done
+
+          
+      # Run the normal build process
+      snapcraftctl build
+
+      echo "--- Searching for compiled executable in '$SNAPCRAFT_PART_BUILD' ---"
+      find "$SNAPCRAFT_PART_BUILD" -type f -name "idescriptor" -ls
+
+      # --- Manual Install Step ---
+      # Find the executable within the build directory and install it.
+      echo "--- Manually installing application files ---"
+
+      # Find the executable file, wherever it is in the build directory
+      EXECUTABLE_PATH=$(find "$SNAPCRAFT_PART_BUILD" -type f -name iDescriptor | head -n 1)
+
+      if [ -z "$EXECUTABLE_PATH" ]; then
+          echo "FATAL ERROR: Could not find the 'idescriptor' executable after build."
+          exit 1
+      fi
+
+      install -v -D "$EXECUTABLE_PATH" "$SNAPCRAFT_PART_INSTALL/usr/bin/idescriptor"
+      install -v -D "$SNAPCRAFT_PART_SRC/iDescriptor.desktop" "$SNAPCRAFT_PART_INSTALL/usr/share/applications/iDescriptor.desktop"
+      install -v -D "$SNAPCRAFT_PART_SRC/resources/icons/app-icon/icon.png" "$SNAPCRAFT_PART_INSTALL/usr/share/icons/hicolor/256x256/apps/iDescriptor.png"
+
+      # --- Forcefully set the RPATH using patchelf ---
+      # We use --force-rpath to create a DT_RPATH entry, which has higher
+      # precedence than the LD_LIBRARY_PATH set by the KDE extension.
+      # This is the definitive fix for the symbol lookup error.
+      echo "--- Patching executable RPATH ---"
+      patchelf --force-rpath --set-rpath '$ORIGIN/../local/lib' "$SNAPCRAFT_PART_INSTALL/usr/bin/idescriptor"
+
+      echo "--- Verifying files after manual install ---"
+      find "$SNAPCRAFT_PART_INSTALL" -ls
