@@ -265,3 +265,7 @@ For example
 - [Photos.sqlite](https://github.com/iDescriptor/iDescriptor/blob/main/src/gallerywidget.cpp)
 
 Or if you'd like to introduce new features, feel free to open an issue or a pull request!
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=iDescriptor/iDescriptor&type=date&legend=top-left)](https://www.star-history.com/#iDescriptor/iDescriptor&type=date&legend=top-left)
