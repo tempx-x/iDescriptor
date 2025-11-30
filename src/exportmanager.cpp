@@ -208,22 +208,59 @@ ExportResult ExportManager::exportSingleItem(iDescriptorDevice *device,
     QString outputPath = QDir(destinationDir).filePath(item.suggestedFileName);
     outputPath = generateUniqueOutputPath(outputPath);
     result.outputFilePath = outputPath;
-
+    QDateTime modificationTime;
+    QDateTime birthTime;
     // Get file size first
-    char **info = nullptr;
-    afc_error_t infoResult = ServiceManager::safeAfcGetFileInfo(
-        device, item.sourcePathOnDevice.toUtf8().constData(), &info, altAfc);
+    //  Example {
+    //   "st_size": 64523,
+    //   "st_blocks": 128,
+    //   "st_nlink": 1,
+    //   "st_ifmt": "S_IFREG",
+    //   "st_mtime": 1754987735634348907,
+    //   "st_birthtime": 1754987735633715011
+    // }
 
-    qint64 totalFileSize = 0;
-    if (infoResult == AFC_E_SUCCESS && info) {
-        for (int i = 0; info[i]; i += 2) {
-            if (strcmp(info[i], "st_size") == 0) {
-                totalFileSize = QString::fromUtf8(info[i + 1]).toLongLong();
-                break;
-            }
-        }
-        afc_dictionary_free(info);
+    plist_t info = nullptr;
+    afc_error_t infoResult = ServiceManager::safeAfcGetFileInfoPlist(
+        device, item.sourcePathOnDevice.toUtf8().constData(), &info, altAfc);
+    int totalFileSize = 0;
+    if (infoResult != AFC_E_SUCCESS || !info) {
+        qDebug() << "File info retrieval failed for" << item.sourcePathOnDevice;
+        return result;
     }
+
+    PlistNavigator fileInfo = PlistNavigator(info);
+
+    bool valid = fileInfo["st_size"].valid();
+    if (!valid) {
+        qDebug() << "File size info not valid for" << item.sourcePathOnDevice;
+        return result;
+    }
+
+    // make sure st_size is a float
+    totalFileSize = fileInfo["st_size"].getUInt();
+
+    valid = fileInfo["st_mtime"].valid();
+    if (!valid) {
+        qDebug() << "File modification time info not valid for"
+                 << item.sourcePathOnDevice;
+        return result;
+    }
+
+    uint64_t modTimeNs = fileInfo["st_mtime"].getUInt();
+    // The timestamp from the device is in nanoseconds, convert to seconds
+    modificationTime = QDateTime::fromSecsSinceEpoch(modTimeNs / 1000000000);
+
+    valid = fileInfo["st_birthtime"].valid();
+    if (!valid) {
+        qDebug() << "File birth time info not valid for"
+                 << item.sourcePathOnDevice;
+        return result;
+    }
+    uint64_t birthTimeNs = fileInfo["st_birthtime"].getUInt();
+    birthTime = QDateTime::fromSecsSinceEpoch(birthTimeNs / 1000000000);
+
+    plist_free(info);
 
     // Open file on device
     uint64_t handle = 0;
@@ -293,6 +330,18 @@ ExportResult ExportManager::exportSingleItem(iDescriptorDevice *device,
 
     // Clean up
     outputFile.close();
+
+    // Set file times after closing the file.
+    if (!outputFile.setFileTime(modificationTime,
+                                QFileDevice::FileModificationTime)) {
+        qWarning() << "Could not set modification time for" << outputPath;
+    }
+    if (birthTime.isValid()) {
+        if (!outputFile.setFileTime(birthTime, QFileDevice::FileBirthTime)) {
+            qWarning() << "Could not set birth time for" << outputPath;
+        }
+    }
+
     ServiceManager::safeAfcFileClose(device, handle, altAfc);
 
     if (totalBytes == 0) {
