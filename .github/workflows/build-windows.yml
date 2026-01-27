@@ -57,7 +57,7 @@ jobs:
 
           
       - name: Setup MSYS2
-        uses: tempx-x/setup-msys2@v2
+        uses: tempx-x/setup-msys2@v1
         with:
           msystem: mingw64
           release: false
