@@ -56,38 +56,13 @@ jobs:
 
 
           
-      - name: Use msys2 archive
-        shell: pwsh
-        run: |
-          # Base URL for the 2025-02-21 MSYS2 archive release
-          $baseUrl = "https://github.com/msys2/msys2-archive/releases/download/2025-02-21"
-          
-          # List of databases to download
-          $databases = @(
-              "clang64",
-              "clangarm64",
-              "mingw32",
-              "mingw64",
-              "msys",
-              "ucrt64"
-          )
-          
-          $targetDir = "C:\msys64\var\lib\pacman\sync"
-          
-          foreach ($db in $databases) {
-              $dbUrl = "$baseUrl/$db.db"
-              $sigUrl = "$baseUrl/$db.db.sig"
-          
-              $dbFile = Join-Path $targetDir "$db.db"
-              $sigFile = Join-Path $targetDir "$db.db.sig"
-          
-              Write-Host "Downloading $db.db ..."
-              Invoke-WebRequest -Uri $dbUrl -OutFile $dbFile
-          
-              Write-Host "Downloading $db.db.sig ..."
-              Invoke-WebRequest -Uri $sigUrl -OutFile $sigFile
-          }
-          
+      - name: Setup MSYS2
+        uses: tempx-x/setup-msys2
+        with:
+          msystem: mingw64
+          release: false
+          update: false
+        
       - name: Install deps using pacman
         run : |
             pacman -S --needed --noconfirm \
