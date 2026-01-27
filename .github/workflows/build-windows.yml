@@ -44,7 +44,7 @@ jobs:
           $msys2Exe = "$env:RUNNER_TEMP\msys2.exe"
           Invoke-WebRequest -Uri $url -OutFile $msys2Exe
           
-          Start-Process -FilePath $msys2Exe -ArgumentList "/DIR=C:\msys64" -Wait
+          Start-Process -FilePath $msys2Exe -ArgumentList "/VERYSILENT /DIR=C:\msys64" -Wait
 
           
       - name: Use msys2 archive
