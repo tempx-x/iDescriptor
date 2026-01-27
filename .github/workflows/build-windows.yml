@@ -38,11 +38,71 @@ jobs:
           submodules: "recursive"
           
       - name: Setup MSYS2
-        uses: tempx-x/setup-msys2@v1.0.0
-        with:
-          msystem: mingw64
-          release: false
-          update: false
+        shell: powershell
+        run: |    
+          $ErrorActionPreference = "Stop"
+          
+          # Configuration
+          $INSTALLER_VERSION = "2025-08-30"
+          $INSTALLER_URL = "https://github.com/msys2/msys2-installer/releases/download/$INSTALLER_VERSION/msys2-base-x86_64-$($INSTALLER_VERSION.Replace('-','')).sfx.exe"
+          $MSYSTEM = "MINGW64"
+          $MSYS2_PATH_TYPE = "minimal"
+          $INSTALL_DIR = "$env:RUNNER_TEMP\msys64"
+          
+          Write-Host "Installing MSYS2 $INSTALLER_VERSION with $MSYSTEM environment..."
+          
+          # Create installation directory
+          New-Item -ItemType Directory -Force -Path $INSTALL_DIR | Out-Null
+          
+          # Download installer
+          Write-Host "Downloading MSYS2 installer..."
+          $installerPath = "$env:RUNNER_TEMP\msys2-installer.exe"
+          Invoke-WebRequest -Uri $INSTALLER_URL -OutFile $installerPath
+          
+          # Extract MSYS2
+          Write-Host "Extracting MSYS2..."
+          Start-Process -FilePath $installerPath -ArgumentList "-y" -WorkingDirectory $env:RUNNER_TEMP -Wait -NoNewWindow
+          
+          # Disable key refresh to speed up installation
+          $postFile = "$INSTALL_DIR\etc\post-install\07-pacman-key.post"
+          if (Test-Path $postFile) {
+              (Get-Content $postFile) -replace '--refresh-keys', '--version' | Set-Content $postFile
+          }
+          
+          # Create wrapper script
+          $wrapperDir = "$env:RUNNER_TEMP\setup-msys2"
+          New-Item -ItemType Directory -Force -Path $wrapperDir | Out-Null
+          
+          $wrapperContent = @"
+          @echo off
+          setlocal
+          IF NOT DEFINED MSYSTEM set MSYSTEM=$MSYSTEM
+          IF NOT DEFINED MSYS2_PATH_TYPE set MSYS2_PATH_TYPE=$MSYS2_PATH_TYPE
+          set CHERE_INVOKING=1
+          $INSTALL_DIR\usr\bin\bash.exe -leo pipefail %*
+          "@
+          
+          $wrapperPath = "$wrapperDir\msys2.cmd"
+          Set-Content -Path $wrapperPath -Value $wrapperContent
+          
+          # Add to PATH
+          Write-Host "Adding MSYS2 to PATH..."
+          echo "$wrapperDir" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          
+          # Set environment variables
+          echo "MSYSTEM=$MSYSTEM" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "MSYS2_PATH_TYPE=$MSYS2_PATH_TYPE" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          
+          # Start MSYS2 for the first time
+          Write-Host "Starting MSYS2 for the first time..."
+          & $wrapperPath -c "uname -a"
+          
+          # Disable CheckSpace to speed up package installation
+          Write-Host "Configuring pacman..."
+          & $wrapperPath -c "sed -i 's/^CheckSpace/#CheckSpace/g' /etc/pacman.conf"
+          
+          Write-Host "MSYS2 setup complete!"
+          Write-Host "Location: $INSTALL_DIR"
         
       - name: Install deps using pacman
         run : |
