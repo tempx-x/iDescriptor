@@ -37,14 +37,23 @@ jobs:
         with:
           submodules: "recursive"
 
-      - name: Install MSYS2
+      - name: Install MSYS2 (SFX extract)
         shell: pwsh
         run: |
-          $url = "https://github.com/msys2/msys2-installer/releases/download/2025-08-30/msys2-x86_64-20250830.exe"
-          $msys2Exe = "$env:RUNNER_TEMP\msys2.exe"
-          Invoke-WebRequest -Uri $url -OutFile $msys2Exe
-          
-          Start-Process -FilePath $msys2Exe -ArgumentList "/VERYSILENT /DIR=C:\msys64" -Wait
+          $version = "2025-08-30"
+          $url = "https://github.com/msys2/msys2-installer/releases/download/$version/msys2-base-x86_64-$($version -replace '-', '').sfx.exe"
+      
+          $dest = "$env:RUNNER_TEMP"
+          $sfx  = "$dest\msys2.sfx.exe"
+      
+          Invoke-WebRequest -Uri $url -OutFile $sfx
+      
+          & $sfx -y -o"$dest"
+      
+          if (!(Test-Path "$dest\msys64")) {
+            throw "MSYS2 extraction failed"
+          }
+
 
           
       - name: Use msys2 archive
