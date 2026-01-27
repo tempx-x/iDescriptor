@@ -78,7 +78,7 @@ jobs:
           
       - name: Install deps using pacman
         run : |
-            pacman -S --needed \
+            pacman -S --needed --noconfirm \
             coreutils \
             base-devel \
             git \
