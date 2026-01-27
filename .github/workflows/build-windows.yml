@@ -37,12 +37,13 @@ jobs:
         with:
           submodules: "recursive"
 
-      - name: Setup MSYS2
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: mingw64
-          release: false
-          update: false
+      - name: Install MSYS2
+        shell: pwsh
+        run: |
+          $url = "https://github.com/msys2/msys2-installer/releases/download/2025-08-30/msys2-x86_64-20250830.exe"
+          Invoke-WebRequest $url -OutFile msys2-installer.exe
+          Start-Process .\msys2-installer.exe -ArgumentList "--root C:\msys64 --confirm-command --accept-messages --accept-licenses" -Wait
+
           
       - name: Use msys2 archive
         shell: pwsh
