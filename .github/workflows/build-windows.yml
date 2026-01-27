@@ -42,34 +42,68 @@ jobs:
         with:
           msystem: mingw64
           release: false
-          update: true
-          install: >-
-            coreutils
-            base-devel
-            git
-            make
-            libtool
-            autoconf
-            automake-wrapper
-            p7zip
-            mingw-w64-x86_64-gcc
-            mingw-w64-x86_64-cmake
-            mingw-w64-x86_64-pugixml
-            mingw-w64-x86_64-libusb
-            mingw-w64-x86_64-qrencode
-            mingw-w64-x86_64-curl
-            mingw-w64-x86_64-openssl
-            mingw-w64-x86_64-libzip
-            mingw-w64-x86_64-go
-            mingw-w64-x86_64-gstreamer
-            mingw-w64-x86_64-gst-plugins-base
-            mingw-w64-x86_64-gst-plugins-good
-            mingw-w64-x86_64-gst-plugins-bad
-            mingw-w64-x86_64-gst-plugins-ugly
-            mingw-w64-x86_64-gst-libav
+          update: false
+          
+      - name: Use msys2 archive
+        shell: pwsh
+        run: |
+          # Base URL for the 2025-02-21 MSYS2 archive release
+          $baseUrl = "https://github.com/msys2/msys2-archive/releases/download/2025-02-21"
+          
+          # List of databases to download
+          $databases = @(
+              "clang64",
+              "clangarm64",
+              "mingw32",
+              "mingw64",
+              "msys",
+              "ucrt64"
+          )
+          
+          $targetDir = "C:\msys64\var\lib\pacman\sync"
+          
+          foreach ($db in $databases) {
+              $dbUrl = "$baseUrl/$db.db"
+              $sigUrl = "$baseUrl/$db.db.sig"
+          
+              $dbFile = Join-Path $targetDir "$db.db"
+              $sigFile = Join-Path $targetDir "$db.db.sig"
+          
+              Write-Host "Downloading $db.db ..."
+              Invoke-WebRequest -Uri $dbUrl -OutFile $dbFile
+          
+              Write-Host "Downloading $db.db.sig ..."
+              Invoke-WebRequest -Uri $sigUrl -OutFile $sigFile
+          }
+          
+      - name: Install deps using pacman
+        run : |
+            pacman -S --needed \
+            coreutils \
+            base-devel \
+            git \ 
+            make \
+            libtool \
+            autoconf \
+            automake-wrapper \
+            p7zip \
+            mingw-w64-x86_64-gcc \
+            mingw-w64-x86_64-cmake \
+            mingw-w64-x86_64-pugixml \
+            mingw-w64-x86_64-libusb \
+            mingw-w64-x86_64-qrencode \
+            mingw-w64-x86_64-curl \
+            mingw-w64-x86_64-openssl \
+            mingw-w64-x86_64-libzip \
+            mingw-w64-x86_64-go \
+            mingw-w64-x86_64-gstreamer \
+            mingw-w64-x86_64-gst-plugins-base \
+            mingw-w64-x86_64-gst-plugins-good \
+            mingw-w64-x86_64-gst-plugins-bad \
+            mingw-w64-x86_64-gst-plugins-ugly \
+            mingw-w64-x86_64-gst-libav \
             mingw-w64-x86_64-libheif
-            mingw-w64-x86_64-libarchive
-
+      
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "8.0.x"
@@ -93,31 +127,7 @@ jobs:
       - name: Install WinFsp
         shell: pwsh
         run: |
-          $maxRetries = 3
-          $retryDelaySeconds = 10
-          $attempt = 0
-          $success = $false
-
-          while ($attempt -lt $maxRetries -and -not $success) {
-              $attempt++
-              Write-Host "Attempt $attempt to install WinFsp..."
-              choco install winfsp -y
-              if ($LASTEXITCODE -eq 0) {
-                  Write-Host "WinFsp installed successfully on attempt $attempt."
-                  $success = $true
-              } else {
-                  Write-Warning "WinFsp installation failed on attempt $attempt (exit code: $LASTEXITCODE)."
-                  if ($attempt -lt $maxRetries) {
-                      Write-Host "Retrying in $retryDelaySeconds seconds..."
-                      Start-Sleep -Seconds $retryDelaySeconds
-                  }
-              }
-          }
-
-          if (-not $success) {
-              Write-Error "Failed to install WinFsp after $maxRetries attempts."
-              exit 1 # Explicitly fail the step if all retries fail
-          }
+          choco install winfsp -y
 
       - name: Download and Extract Bonjour SDK
         run: |
