@@ -81,7 +81,7 @@ jobs:
             pacman -S --needed \
             coreutils \
             base-devel \
-            git \ 
+            git \
             make \
             libtool \
             autoconf \
@@ -103,6 +103,7 @@ jobs:
             mingw-w64-x86_64-gst-plugins-ugly \
             mingw-w64-x86_64-gst-libav \
             mingw-w64-x86_64-libheif
+
       
       - uses: actions/setup-dotnet@v5
         with:
