@@ -47,8 +47,8 @@ jobs:
       - name: Use msys2 archive
         shell: pwsh
         run: |
-          # Base URL for the 2025-02-21 MSYS2 archive release
-          $baseUrl = "https://github.com/msys2/msys2-archive/releases/download/2025-02-21"
+          # Base URL for the 2025-06-22 MSYS2 archive release
+          $baseUrl = "https://github.com/msys2/msys2-archive/releases/download/2025-06-22"
           
           $databases = @(
               "clang64",
